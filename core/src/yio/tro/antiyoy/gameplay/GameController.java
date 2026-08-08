@@ -156,7 +156,22 @@ public class GameController {
     private void checkForAloneUnits() {
         for (int i = unitList.size() - 1; i >= 0; i--) {
             Unit unit = unitList.get(i);
-            if (isCurrentTurn(unit.getFraction()) && unit.currentHex.numberOfFriendlyHexesNearby() == 0) {
+            if (!isCurrentTurn(unit.getFraction())) continue;
+
+            // a ship in open water has no friendly neighbors by definition; it survives as long
+            // as its supply line home holds, and sinks the moment the origin province is lost
+            if (unit.ship && !unit.currentHex.active) {
+                if (unit.getOriginProvince() == null) {
+                    fieldManager.sinkShip(unit);
+                }
+                continue;
+            }
+
+            // a one-hex beachhead has no friendly neighbors, but it is supplied by its
+            // province across the sea - the garrison doesn't starve
+            if (unit.currentHex.overseasPart) continue;
+
+            if (unit.currentHex.numberOfFriendlyHexesNearby() == 0) {
                 fieldManager.killUnitByStarvation(unit.currentHex);
             }
         }
@@ -408,6 +423,11 @@ public class GameController {
 
     public boolean isUnitValidForMovement(Unit unit) {
         if (!isCurrentTurn(unit.getFraction())) return false;
+        // a ship in open water has no friendly land nearby by definition - it may always sail
+        if (unit.ship) return true;
+        // a lone beachhead has no friendly land nearby either, but its port keeps it supplied
+        // by the province across the sea - the garrison may move out (or sail away) freely
+        if (unit.currentHex.overseasPart) return true;
         if (unit.currentHex.numberOfFriendlyHexesNearby() == 0) return false;
         return true;
     }
@@ -872,6 +892,16 @@ public class GameController {
     }
 
 
+    public void detectAndShowMoveZoneForPort() {
+        fieldManager.moveZoneManager.detectAndShowMoveZoneForPort();
+    }
+
+
+    public ArrayList<Hex> detectMoveZoneForShip(Unit unit) {
+        return fieldManager.moveZoneManager.detectMoveZoneForShip(unit);
+    }
+
+
     public ArrayList<Hex> detectMoveZone(Hex startHex, int strength) {
         return fieldManager.moveZoneManager.detectMoveZone(startHex, strength);
     }
@@ -938,6 +968,12 @@ public class GameController {
             if (!GameRules.replayMode) return;
         }
 
+        // a water hex has no owner of its own; while a ship sits on it, it carries the ship's
+        // fraction so every same-fraction check downstream sees the move as peaceful sailing
+        if (!target.active && unit.ship) {
+            target.fraction = unit.getFraction();
+        }
+
         replayManager.onUnitMoved(unit.currentHex, target);
         if (isMovementPeaceful(unit, target)) {
             moveUnitPeacefully(unit, target);
@@ -957,16 +993,34 @@ public class GameController {
 
 
     private void moveUnitWithAttack(Unit unit, Hex destination, Province unitProvince) {
+        // a ship at sea belongs to no province; an amphibious landing is booked to the friendly
+        // province next to the beachhead, or - when landing on a foreign shore with no friendly
+        // land in sight - to the province the ship sailed from (an overseas invasion)
+        if (unitProvince == null && unit.ship) {
+            unitProvince = fieldManager.getAdjacentProvince(destination, unit.getFraction());
+            if (unitProvince == null) {
+                unitProvince = unit.getOriginProvince();
+            }
+        }
+
         if (!destination.canBeAttackedBy(unit) || unitProvince == null) {
             System.out.println("Problem in GameController.moveUnitWithAttack");
             Yio.printStackTrace();
             return;
         }
 
+        boolean wasShip = unit.ship;
         fieldManager.setHexFraction(destination, turn); // must be called before object in hex destroyed
         fieldManager.cleanOutHex(destination);
         unit.moveToHex(destination);
+        boolean joinedSomeProvince = fieldManager.getProvinceByHex(destination) != null;
         unitProvince.addHex(destination);
+        if (wasShip && !joinedSomeProvince) {
+            // an overseas invasion: the beachhead has no friendly land around, so it becomes an
+            // overseas part of the province the ship sailed from. No free port is granted -
+            // ports cost money and stand on water; the colony is a pure land grab
+            destination.overseasPart = true;
+        }
         if (isPlayerTurn()) {
             fieldManager.selectedHexes.add(destination);
             updateCacheOnceAfterSomeTime();

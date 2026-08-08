@@ -17,6 +17,7 @@ public class RepActionFactory {
             case RepAction.UNIT_DIED_FROM_STARVATION: return new RaUnitDiedFromStarvation(null);
             case RepAction.HEX_CHANGED_FRACTION: return new RaHexFractionChanged(null, -1);
             case RepAction.UNIT_SPAWNED: return new RaUnitSpawned(null, -1);
+            case RepAction.PORT_BUILT: return new RaPortBuilt(null, -1);
         }
     }
 

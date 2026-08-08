@@ -237,7 +237,26 @@ public class LevelSnapshot {
             } else {
                 province.money = copy.money;
                 province.updateName();
+                restoreOverseasOwnership(copy, province);
             }
+        }
+    }
+
+
+    /**
+     * detectProvinces() attaches overseas colonies to the largest province of their fraction -
+     * a guess. The snapshot knows the true owner, so misattached colony hexes are moved back.
+     */
+    private void restoreOverseasOwnership(Province copy, Province province) {
+        for (Hex copyHex : copy.hexList) {
+            if (!copyHex.overseasPart) continue;
+            Hex liveHex = getHexByCopy(copyHex);
+            if (!liveHex.active || !liveHex.overseasPart) continue;
+            if (liveHex.fraction != province.getFraction()) continue;
+            Province currentOwner = gameController.fieldManager.getProvinceByHex(liveHex);
+            if (currentOwner == province || currentOwner == null) continue;
+            currentOwner.hexList.remove(liveHex);
+            province.addHex(liveHex);
         }
     }
 
@@ -261,27 +280,42 @@ public class LevelSnapshot {
 
     private void recreateSingleHex(int i, int j) {
         Hex currHex = gameController.fieldManager.field[i][j];
-        if (!currHex.active) return;
+        // the active set can change mid-game (a port activates a water hex), so undo has to
+        // restore the flag itself; a hex flipping back to water was already emptied by
+        // cleanOutEveryHexInField() while it was still active
+        currHex.active = fieldCopy[i][j].active;
+        currHex.overseasPart = fieldCopy[i][j].overseasPart;
 
-        if (!currHex.sameFraction(fieldCopy[i][j])) {
-            currHex.fraction = fieldCopy[i][j].fraction;
-            gameController.addAnimHex(currHex);
-        }
-
-        if (currHex.selected != fieldCopy[i][j].selected) {
-            currHex.selected = fieldCopy[i][j].selected;
-            if (!currHex.selected) {
-                currHex.selectionFactor.setValues(0, 0);
+        if (currHex.active) {
+            if (!currHex.sameFraction(fieldCopy[i][j])) {
+                currHex.fraction = fieldCopy[i][j].fraction;
+                gameController.addAnimHex(currHex);
             }
+
+            if (currHex.selected != fieldCopy[i][j].selected) {
+                currHex.selected = fieldCopy[i][j].selected;
+                if (!currHex.selected) {
+                    currHex.selectionFactor.setValues(0, 0);
+                }
+            }
+
+            if (fieldCopy[i][j].containsObject()) {
+                gameController.addSolidObject(currHex, fieldCopy[i][j].objectInside);
+            }
+        } else {
+            // a water hex carries an occupying ship's fraction; keep it consistent with the copy
+            currHex.fraction = fieldCopy[i][j].fraction;
         }
 
-        if (fieldCopy[i][j].containsObject()) {
-            gameController.addSolidObject(currHex, fieldCopy[i][j].objectInside);
-        }
-
+        // units are restored on water hexes too - a ship at sea survives undo
         if (fieldCopy[i][j].containsUnit()) {
             Unit copyUnit = fieldCopy[i][j].unit;
             Unit newUnit = gameController.addUnit(currHex, copyUnit.strength);
+            newUnit.ship = copyUnit.ship;
+            if (copyUnit.originHex != null) {
+                // remap to the live field: the copy may hold a reference from a previous life
+                newUnit.originHex = gameController.fieldManager.field[copyUnit.originHex.index1][copyUnit.originHex.index2];
+            }
             if (copyUnit.isReadyToMove() && gameController.isUnitValidForMovement(newUnit)) {
                 currHex.unit.setReadyToMove(true);
                 currHex.unit.startJumping();

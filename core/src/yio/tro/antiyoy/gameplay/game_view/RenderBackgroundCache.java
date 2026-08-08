@@ -268,6 +268,12 @@ public class RenderBackgroundCache extends GameRender {
 
             currentHexTexture = texturesManager.getHexTextureByFraction(hex.fraction);
             batchCache.draw(currentHexTexture, pos.x - 0.99f * hexViewSize, pos.y - 0.99f * hexViewSize, 2 * 0.99f * hexViewSize, 2 * 0.99f * hexViewSize);
+
+            if (hex.isBrightenedTerritory()) {
+                batchCache.setColor(1, 1, 1, 0.18f);
+                batchCache.draw(texturesManager.hexHighlight, pos.x - 0.99f * hexViewSize, pos.y - 0.99f * hexViewSize, 2 * 0.99f * hexViewSize, 2 * 0.99f * hexViewSize);
+                batchCache.setColor(1, 1, 1, 1);
+            }
         }
     }
 

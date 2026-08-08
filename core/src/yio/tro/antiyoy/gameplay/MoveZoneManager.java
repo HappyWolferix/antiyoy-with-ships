@@ -104,6 +104,29 @@ public class MoveZoneManager {
     }
 
 
+    public ArrayList<Hex> detectMoveZoneForShip(Unit unit) {
+        return moveZoneDetection.detectMoveZoneForShip(unit);
+    }
+
+
+    public void detectAndShowMoveZoneForShip(Unit unit) {
+        moveZone = moveZoneDetection.detectMoveZoneForShip(unit);
+        checkToForceMoveZoneAnims();
+        appearFactor.setValues(0, 0);
+        appearFactor.appear(3, 1.5);
+        getSelectionController().getBlackoutFactor().appear(3, 1.5);
+    }
+
+
+    public void detectAndShowMoveZoneForPort() {
+        moveZone = moveZoneDetection.detectMoveZoneForPort();
+        checkToForceMoveZoneAnims();
+        appearFactor.setValues(0, 0);
+        appearFactor.appear(3, 1.5);
+        getSelectionController().getBlackoutFactor().appear(3, 1.5);
+    }
+
+
     public void detectAndShowMoveZoneForFarm() {
         moveZone = moveZoneDetection.detectMoveZoneForFarm();
         checkToForceMoveZoneAnims();

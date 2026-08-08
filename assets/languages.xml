@@ -408,6 +408,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Lands"/>
         <string key="farms" value="Farms"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Units"/>
         <string key="trees" value="Trees"/>
         <string key="towers" value="Towers"/>
@@ -848,6 +849,7 @@
         <string key="check_filters" value="Проверьте фильтры"/>
         <string key="lands" value="Земли"/>
         <string key="farms" value="Фермы"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Юниты"/>
         <string key="trees" value="Деревья"/>
         <string key="towers" value="Башни"/>
@@ -1287,6 +1289,7 @@
         <string key="check_filters" value="Перевірте фільтри"/>
         <string key="lands" value="Землі"/>
         <string key="farms" value="Ферми"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Юніти"/>
         <string key="trees" value="Дерева"/>
         <string key="towers" value="Башти"/>
@@ -1779,6 +1782,7 @@
         <string key="check_filters" value="Filter checken"/>
         <string key="lands" value="Landflächen"/>
         <string key="farms" value="Farmen"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Einheiten"/>
         <string key="trees" value="Bäume"/>
         <string key="towers" value="Türme"/>
@@ -2253,6 +2257,7 @@
         <string key="check_filters" value="Zkontrolovat filtry"/>
         <string key="lands" value="Území"/>
         <string key="farms" value="Farmy"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Jednotky"/>
         <string key="trees" value="Stromy"/>
         <string key="towers" value="Věže"/>
@@ -2735,6 +2740,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Lands"/>
         <string key="farms" value="Farms"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Units"/>
         <string key="trees" value="Trees"/>
         <string key="towers" value="Towers"/>
@@ -3220,6 +3226,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Lands"/>
         <string key="farms" value="Farms"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Units"/>
         <string key="trees" value="Trees"/>
         <string key="towers" value="Towers"/>
@@ -3661,6 +3668,7 @@
         <string key="check_filters" value="Controlla i filtri"/>
         <string key="lands" value="Terre"/>
         <string key="farms" value="Fattorie"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Unità"/>
         <string key="trees" value="Alberi"/>
         <string key="towers" value="Torri"/>
@@ -4136,6 +4144,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Lands"/>
         <string key="farms" value="Farms"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Units"/>
         <string key="trees" value="Trees"/>
         <string key="towers" value="Towers"/>
@@ -4611,6 +4620,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Lands"/>
         <string key="farms" value="Farms"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Units"/>
         <string key="trees" value="Trees"/>
         <string key="towers" value="Towers"/>
@@ -5105,6 +5115,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Lands"/>
         <string key="farms" value="Farms"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Units"/>
         <string key="trees" value="Trees"/>
         <string key="towers" value="Towers"/>
@@ -5591,6 +5602,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Lands"/>
         <string key="farms" value="Farms"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Units"/>
         <string key="trees" value="Trees"/>
         <string key="towers" value="Towers"/>
@@ -6083,6 +6095,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Lands"/>
         <string key="farms" value="Farms"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Units"/>
         <string key="trees" value="Trees"/>
         <string key="towers" value="Towers"/>
@@ -6546,6 +6559,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Lands"/>
         <string key="farms" value="Farms"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Units"/>
         <string key="trees" value="Trees"/>
         <string key="towers" value="Towers"/>
@@ -7008,6 +7022,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Lands"/>
         <string key="farms" value="Farms"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Units"/>
         <string key="trees" value="Trees"/>
         <string key="towers" value="Towers"/>
@@ -7516,6 +7531,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Lands"/>
         <string key="farms" value="Farms"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Units"/>
         <string key="trees" value="Trees"/>
         <string key="towers" value="Towers"/>
@@ -7978,6 +7994,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Землі"/>
         <string key="farms" value="Фермы"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Юніты"/>
         <string key="trees" value="Дрэвы"/>
         <string key="towers" value="Вежы"/>
@@ -8430,6 +8447,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Lands"/>
         <string key="farms" value="Farms"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Units"/>
         <string key="trees" value="Trees"/>
         <string key="towers" value="Towers"/>
@@ -8883,6 +8901,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Lands"/>
         <string key="farms" value="Farms"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Units"/>
         <string key="trees" value="Trees"/>
         <string key="towers" value="Towers"/>
@@ -9345,6 +9364,7 @@
         <string key="check_filters" value="Krysse av filtre"/>
         <string key="lands" value="Områder"/>
         <string key="farms" value="Gårder"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Enheter"/>
         <string key="trees" value="Trær"/>
         <string key="towers" value="Tårn"/>
@@ -9809,6 +9829,7 @@
         <string key="check_filters" value="Check filters"/>
         <string key="lands" value="Lands"/>
         <string key="farms" value="Farms"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Units"/>
         <string key="trees" value="Trees"/>
         <string key="towers" value="Towers"/>
@@ -10267,6 +10288,7 @@
         <string key="check_filters" value="Patikrinkite filtrus"/>
         <string key="lands" value="Žemės"/>
         <string key="farms" value="Fermos"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Vienetai"/>
         <string key="trees" value="Medžiai"/>
         <string key="towers" value="Bokštai"/>
@@ -10721,6 +10743,7 @@
         <string key="check_filters" value="Provjeri filtere"/>
         <string key="lands" value="Polja"/>
         <string key="farms" value="Kuće"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Vojnici"/>
         <string key="trees" value="Drveće"/>
         <string key="towers" value="Kule"/>
@@ -11171,6 +11194,7 @@
         <string key="check_filters" value="Revisa filtres"/>
         <string key="lands" value="Terres"/>
         <string key="farms" value="Granjes"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Unitats"/>
         <string key="trees" value="Arbres"/>
         <string key="towers" value="Torres"/>
@@ -11618,6 +11642,7 @@
         <string key="check_filters" value="Pārbaudiet filtrus"/>
         <string key="lands" value="Zemes"/>
         <string key="farms" value="Fermas"/>
+        <string key="ports" value="Ports"/>
         <string key="units" value="Kareivji"/>
         <string key="trees" value="Koki"/>
         <string key="towers" value="Torņi"/>

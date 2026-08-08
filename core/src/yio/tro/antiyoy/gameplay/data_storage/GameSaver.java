@@ -140,7 +140,7 @@ public class GameSaver {
 
 
     private int[] getHexSnapshotByString(String hexString) {
-        int snapshot[] = new int[7];
+        int snapshot[] = new int[8];
         StringTokenizer stringTokenizer = new StringTokenizer(hexString, " ");
         int i = 0;
         while (stringTokenizer.hasMoreTokens()) {
@@ -167,7 +167,13 @@ public class GameSaver {
         }
         int unitStrength = snapshot[4];
         if (unitStrength > 0) {
-            gameController.addUnit(hex, unitStrength);
+            if (hex.objectInside == Obj.PORT) {
+                // a docked unit shares the hex with its port - the crush path of addUnit()
+                // would destroy the building
+                gameController.fieldManager.addUnitWithoutCrushingObject(hex, unitStrength);
+            } else {
+                gameController.addUnit(hex, unitStrength);
+            }
             if (snapshot[5] == 1) { // ready to move
                 hex.unit.setReadyToMove(true);
                 hex.unit.startJumping();
@@ -176,6 +182,7 @@ public class GameSaver {
                 hex.unit.stopJumping();
             }
         }
+        hex.overseasPart = snapshot[7] == 1; // absent in old save format, defaults to 0
         hex.moveZoneNumber = snapshot[6]; // this is actually money on hex
         activeIterator.add(hex);
     }

@@ -45,3 +45,9 @@ palm_lowest.png#418 371 30 30
 selection_pixel.png#449 371 10 10
 selection_pixel_low.png#460 371 5 5
 selection_pixel_lowest.png#466 371 2 2
+ship.png#0 410 128 128
+ship_low.png#129 410 64 64
+ship_lowest.png#194 410 32 32
+anchor.png#227 410 128 128
+anchor_low.png#356 410 64 64
+anchor_lowest.png#421 410 32 32

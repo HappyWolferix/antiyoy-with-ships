@@ -83,6 +83,11 @@ public class RenderAnimHexes extends GameRender {
             targetTexture = texturesManager.getHexTextureByFraction(hex.fraction);
             batchMovable.setColor(c.r, c.g, c.b, hex.animFactor.get());
             GraphicsYio.drawFromCenter(batchMovable, targetTexture, pos.x, pos.y, hexViewSize);
+
+            if (hex.isBrightenedTerritory()) {
+                batchMovable.setColor(c.r, c.g, c.b, 0.18f * hex.animFactor.get());
+                GraphicsYio.drawFromCenter(batchMovable, texturesManager.hexHighlight, pos.x, pos.y, hexViewSize);
+            }
         }
 
         batchMovable.setColor(c.r, c.g, c.b, 1);

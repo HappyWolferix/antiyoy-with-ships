@@ -17,6 +17,10 @@ public class Hex implements ReusableYio, EncodeableYio{
     public FieldManager fieldManager;
     float cos60, sin60;
     public int fraction, previousFraction, objectInside;
+    // an overseas beachhead: this hex belongs to a province it has no land connection to.
+    // Such hexes share the owning province's economy and are handed over to any friendly
+    // province they later gain a land border with.
+    public boolean overseasPart;
     long animStartTime;
     boolean blockToTreeFromExpanding, canContainObjects;
     public FactorYio animFactor, selectionFactor;
@@ -74,7 +78,7 @@ public class Hex implements ReusableYio, EncodeableYio{
     }
 
 
-    boolean isInProvince() { // can cause bugs if province not detected right
+    public boolean isInProvince() { // can cause bugs if province not detected right
         Hex adjHex;
         for (int i = 0; i < 6; i++) {
             adjHex = getAdjacentHex(i);
@@ -147,11 +151,21 @@ public class Hex implements ReusableYio, EncodeableYio{
     }
 
 
+    /**
+     * Naval territory - port tiles and overseas colonies - is rendered slightly brighter
+     * than ordinary province land, so it can be told apart at a glance.
+     */
+    public boolean isBrightenedTerritory() {
+        return active && (objectInside == Obj.PORT || overseasPart);
+    }
+
+
     public boolean containsBuilding() {
         return objectInside == Obj.TOWN
                 || objectInside == Obj.TOWER
                 || objectInside == Obj.FARM
-                || objectInside == Obj.STRONG_TOWER;
+                || objectInside == Obj.STRONG_TOWER
+                || objectInside == Obj.PORT;
     }
 
 
@@ -160,6 +174,7 @@ public class Hex implements ReusableYio, EncodeableYio{
         record.active = active;
         record.fraction = fraction;
         record.objectInside = objectInside;
+        record.overseasPart = overseasPart;
         record.selected = selected;
         if (unit != null) {
             record.unit = unit.getSnapshotCopy();
@@ -437,7 +452,7 @@ public class Hex implements ReusableYio, EncodeableYio{
 
     @Override
     public String encode() {
-        return index1 + " " + index2 + " " + fraction + " " + objectInside;
+        return index1 + " " + index2 + " " + fraction + " " + objectInside + " " + overseasPart;
     }
 
 
@@ -447,6 +462,9 @@ public class Hex implements ReusableYio, EncodeableYio{
         int obj = Integer.valueOf(split[3]);
         if (obj > 0) {
             fieldManager.addSolidObject(this, obj);
+        }
+        if (split.length > 4) {
+            overseasPart = Boolean.valueOf(split[4]);
         }
     }
 }

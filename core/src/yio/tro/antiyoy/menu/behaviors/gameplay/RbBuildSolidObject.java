@@ -16,6 +16,7 @@ public class RbBuildSolidObject extends Reaction {
     public RbBuildSolidObject() {
         chain = new int[]{
                 SelectionTipType.FARM,
+                SelectionTipType.PORT,
                 SelectionTipType.TOWER,
                 SelectionTipType.STRONG_TOWER
         };
@@ -49,6 +50,9 @@ public class RbBuildSolidObject extends Reaction {
             getGameController(buttonYio).selectionManager.awakeTip(tipType);
             if (tipType == SelectionTipType.FARM) {
                 getGameController(buttonYio).detectAndShowMoveZoneForFarm();
+            }
+            if (tipType == SelectionTipType.PORT) {
+                getGameController(buttonYio).detectAndShowMoveZoneForPort();
             }
         }
     }

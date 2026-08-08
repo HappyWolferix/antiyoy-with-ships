@@ -10,10 +10,23 @@ public class GameRules {
     public static final int PRICE_TOWER = 15;
     public static final int PRICE_FARM = 12;
     public static final int PRICE_STRONG_TOWER = 35;
+    // A port is cheap to start (below a peasant + a farm) but the price doubles with every port the
+    // province already owns, so the second one costs 40, the third 80. Farms grow linearly and stay
+    // spammable; the port is meant to be a handful of deliberate coastal investments instead.
+    public static final int PRICE_PORT = 20;
 
     public static final int PRICE_TREE = 10;
     public static final int FARM_INCOME = 4;
+    // Slightly better than a farm per building, which is what pays for the doubling price curve.
+    public static final int PORT_INCOME = 5;
     public static final int TREE_CUT_REWARD = 3;
+
+    // Being at sea (or docked, ready to sail) is a logistics burden on top of the soldier's own pay:
+    // every unit with the ship flag costs this much extra per turn, whatever its strength.
+    public static final int TAX_SHIP = 5;
+    // Ships move at a fixed pace regardless of which unit tier is aboard - it's the vessel's speed
+    // that matters, not the soldier's.
+    public static final int SHIP_MOVE_LIMIT = 4;
 
     public static final int TAX_TOWER = 1;
     public static final int TAX_STRONG_TOWER = 6;

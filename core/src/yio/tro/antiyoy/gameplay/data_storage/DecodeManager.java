@@ -2,6 +2,7 @@ package yio.tro.antiyoy.gameplay.data_storage;
 
 import yio.tro.antiyoy.gameplay.GameController;
 import yio.tro.antiyoy.gameplay.Hex;
+import yio.tro.antiyoy.gameplay.Obj;
 import yio.tro.antiyoy.gameplay.Province;
 import yio.tro.antiyoy.gameplay.Unit;
 import yio.tro.antiyoy.gameplay.rules.GameRules;
@@ -107,7 +108,14 @@ public class DecodeManager {
         int index2 = Integer.valueOf(split[1]);
         int strength = Integer.valueOf(split[2]);
         Hex hex = gameController.fieldManager.getHex(index1, index2);
-        Unit unit = gameController.fieldManager.addUnit(hex, strength);
+        Unit unit;
+        if (hex.objectInside == Obj.PORT) {
+            // a docked unit shares the hex with its port - the crush path of addUnit()
+            // would destroy the building
+            unit = gameController.fieldManager.addUnitWithoutCrushingObject(hex, strength);
+        } else {
+            unit = gameController.fieldManager.addUnit(hex, strength);
+        }
         unit.decode(token);
     }
 

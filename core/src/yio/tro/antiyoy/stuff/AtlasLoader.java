@@ -73,6 +73,11 @@ public class AtlasLoader {
     }
 
 
+    public boolean hasTexture(String fileName) {
+        return fileNames.contains(fileName);
+    }
+
+
     public TextureRegion getTexture(String fileName) {
         int index = fileNames.indexOf(fileName);
         return new TextureRegion(

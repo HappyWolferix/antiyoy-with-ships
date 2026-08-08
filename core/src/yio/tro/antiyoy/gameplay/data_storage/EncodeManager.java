@@ -127,9 +127,9 @@ public class EncodeManager {
 
     private void encodeUnits() {
         startSection("units");
-        for (Hex activeHex : fieldManager.activeHexes) {
-            if (!activeHex.hasUnit()) continue;
-            builder.append(activeHex.unit.encode()).append(",");
+        // iterate the unit list instead of activeHexes: ships at sea stand on inactive hexes
+        for (Unit unit : gameController.getUnitList()) {
+            builder.append(unit.encode()).append(",");
         }
     }
 

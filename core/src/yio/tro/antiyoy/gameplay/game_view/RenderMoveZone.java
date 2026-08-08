@@ -147,6 +147,12 @@ public class RenderMoveZone extends GameRender {
                 currentHexTexture = texturesManager.getHexTextureByFraction(hex.fraction);
                 batchMovable.setColor(c.r, c.g, c.b, hex.animFactor.get());
                 batchMovable.draw(currentHexTexture, pos.x - hvSize, pos.y - hvSize, 2 * hvSize, 2 * hvSize);
+
+            if (hex.isBrightenedTerritory()) {
+                batchMovable.setColor(c.r, c.g, c.b, 0.18f);
+                batchMovable.draw(texturesManager.hexHighlight, pos.x - hvSize, pos.y - hvSize, 2 * hvSize, 2 * hvSize);
+                batchMovable.setColor(c.r, c.g, c.b, 1);
+            }
                 continue;
             }
 

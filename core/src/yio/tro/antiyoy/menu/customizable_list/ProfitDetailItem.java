@@ -3,6 +3,7 @@ package yio.tro.antiyoy.menu.customizable_list;
 import yio.tro.antiyoy.gameplay.GameController;
 import yio.tro.antiyoy.gameplay.Obj;
 import yio.tro.antiyoy.gameplay.Province;
+import yio.tro.antiyoy.gameplay.rules.GameRules;
 import yio.tro.antiyoy.menu.MenuControllerYio;
 import yio.tro.antiyoy.menu.render.AbstractRenderCustomListItem;
 import yio.tro.antiyoy.menu.render.MenuRender;
@@ -73,7 +74,9 @@ public class ProfitDetailItem extends AbstractCustomListItem{
             case lands:
                 return selectedProvince.hexList.size();
             case farms:
-                return 4 * selectedProvince.countObjects(Obj.FARM);
+                return GameRules.FARM_INCOME * selectedProvince.countObjects(Obj.FARM);
+            case ports:
+                return GameRules.PORT_INCOME * selectedProvince.countObjects(Obj.PORT);
             case diplomacy:
                 return getDiplomacyIncome(selectedProvince);
             case trees:

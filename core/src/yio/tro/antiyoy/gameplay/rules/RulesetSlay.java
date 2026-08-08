@@ -50,10 +50,19 @@ public class RulesetSlay extends Ruleset{
     }
 
 
+    /**
+     * Slay pays nothing for buildings - not even farms - so there is no profit to advertise.
+     */
+    @Override
+    public int getBuildingIncome(Hex hex) {
+        return 0;
+    }
+
+
     @Override
     public int getHexTax(Hex hex) {
         if (hex.containsUnit()) {
-            return getUnitTax(hex.unit.strength);
+            return getUnitTax(hex.unit);
         }
 
         return 0;

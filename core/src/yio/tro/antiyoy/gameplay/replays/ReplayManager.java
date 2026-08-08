@@ -109,6 +109,12 @@ public class ReplayManager {
     }
 
 
+    public void onPortBuilt(Hex hex, int fraction) {
+        if (!canAddAction()) return;
+        replay.addAction(new RaPortBuilt(hex, fraction));
+    }
+
+
     public void onStopButtonPressed() {
         replay.recreateInitialSituation();
         replay.prepare();

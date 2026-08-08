@@ -121,8 +121,10 @@ public class FieldManager implements EncodeableYio{
     public void cleanOutAllHexesInField() {
         for (int i = 0; i < fWidth; i++) {
             for (int j = 0; j < fHeight; j++) {
-                if (!gameController.fieldManager.field[i][j].active) continue;
-                gameController.cleanOutHex(gameController.fieldManager.field[i][j]);
+                Hex hex = gameController.fieldManager.field[i][j];
+                // inactive hexes are cleaned too: a ship may be standing on water
+                if (!hex.active && !hex.containsUnit()) continue;
+                gameController.cleanOutHex(hex);
             }
         }
     }
@@ -227,6 +229,26 @@ public class FieldManager implements EncodeableYio{
                 killUnitByStarvation(hex);
             }
         }
+
+        // ships at sea are fed by this province too - bankruptcy reaches them across the water
+        ArrayList<Unit> unitList = gameController.getUnitList();
+        for (int i = unitList.size() - 1; i >= 0; i--) {
+            Unit unit = unitList.get(i);
+            if (!unit.ship || unit.currentHex.active) continue;
+            if (unit.getOriginProvince() != province) continue;
+            sinkShip(unit);
+        }
+    }
+
+
+    /**
+     * A ship dying at sea leaves no grave - it just sinks, and the water hex it borrowed
+     * a fraction from goes back to being nobody's sea.
+     */
+    public void sinkShip(Unit unit) {
+        Hex hex = unit.currentHex;
+        removeUnitFromHex(hex);
+        hex.fraction = GameRules.NEUTRAL_FRACTION;
     }
 
 
@@ -371,6 +393,7 @@ public class FieldManager implements EncodeableYio{
         tempList.clear();
         propagationList.clear();
 
+        ArrayList<ArrayList<Hex>> overseasComponents = new ArrayList<>();
         for (Hex hex : activeHexes) {
             if (hex.isNeutral()) continue;
             if (hex.flag) continue;
@@ -380,6 +403,12 @@ public class FieldManager implements EncodeableYio{
             propagationList.add(hex);
             hex.flag = true;
             propagateHex(tempList, propagationList);
+            // an overseas colony is not a province of its own (whatever its size) - it lives
+            // off a mainland province and is attached to one below
+            if (isOverseasComponent(tempList)) {
+                overseasComponents.add(new ArrayList<>(tempList));
+                continue;
+            }
             if (tempList.size() >= 2) {
                 Province province = new Province(gameController, tempList);
                 addProvince(province);
@@ -391,6 +420,39 @@ public class FieldManager implements EncodeableYio{
 
             province.placeCapitalInRandomPlace(gameController.predictableRandom);
         }
+
+        attachOverseasComponents(overseasComponents);
+    }
+
+
+    /**
+     * Re-attaches overseas colonies to a mainland province of their fraction after provinces
+     * were rebuilt from scratch. The largest province is chosen as the host; when the snapshot
+     * knows better (undo), LevelSnapshot corrects the ownership afterwards. A colony whose
+     * fraction has no mainland province left collapses.
+     */
+    private void attachOverseasComponents(ArrayList<ArrayList<Hex>> overseasComponents) {
+        for (ArrayList<Hex> component : overseasComponents) {
+            Province host = getMaxProvinceWithFraction(component.get(0).fraction);
+            for (Hex hex : component) {
+                if (host == null) {
+                    hex.overseasPart = false;
+                    destroyBuildingsOnHex(hex);
+                } else {
+                    host.addHex(hex);
+                }
+            }
+        }
+    }
+
+
+    private Province getMaxProvinceWithFraction(int fraction) {
+        Province max = null;
+        for (Province province : provinces) {
+            if (province.getFraction() != fraction) continue;
+            if (max == null || province.hexList.size() > max.hexList.size()) max = province;
+        }
+        return max;
     }
 
 
@@ -836,12 +898,18 @@ public class FieldManager implements EncodeableYio{
     }
 
 
+    public void removeUnitFromHex(Hex hex) {
+        if (!hex.containsUnit()) return;
+
+        gameController.getMatchStatistics().onUnitKilled();
+        gameController.getUnitList().remove(hex.unit);
+        hex.unit = null;
+        addAnimHex(hex);
+    }
+
+
     public void cleanOutHex(Hex hex) {
-        if (hex.containsUnit()) {
-            gameController.getMatchStatistics().onUnitKilled();
-            gameController.getUnitList().remove(hex.unit);
-            hex.unit = null;
-        }
+        removeUnitFromHex(hex);
         hex.setObjectInside(0);
         addAnimHex(hex);
         ListIterator iterator = solidObjects.listIterator();
@@ -956,7 +1024,7 @@ public class FieldManager implements EncodeableYio{
     public boolean buildFarm(Province province, Hex hex) {
         if (province == null) return false;
 
-        if (!hex.hasThisSupportiveObjectNearby(Obj.TOWN) && !hex.hasThisSupportiveObjectNearby(Obj.FARM)) {
+        if (!MoveZoneDetection.canBuildFarmOnHex(hex)) {
             return false;
         }
 
@@ -977,6 +1045,50 @@ public class FieldManager implements EncodeableYio{
     }
 
 
+    public boolean buildPort(Province province, Hex hex) {
+        if (province == null) return false;
+
+        if (!MoveZoneDetection.canBuildPortOnHex(province, hex)) {
+            return false;
+        }
+
+        if (province.hasMoneyForPort()) {
+            int price = province.getCurrentPortPrice();
+            gameController.takeSnapshot();
+            gameController.replayManager.onPortBuilt(hex, province.getFraction());
+            province.money -= price;
+            gameController.getMatchStatistics().onMoneySpent(gameController.turn, price);
+            activatePortHex(province, hex);
+            addSolidObject(hex, Obj.PORT);
+            addAnimHex(hex);
+            gameController.updateCacheOnceAfterSomeTime();
+            return true;
+        }
+
+        // can't build port
+        tickleMoneySign();
+        return false;
+    }
+
+
+    /**
+     * A port claims the water tile it stands on: the hex becomes an active part of the province, so
+     * income, saving, undo and conquest all treat it as ordinary territory from here on. Must run
+     * before addSolidObject, which refuses inactive hexes.
+     */
+    private void activatePortHex(Province province, Hex hex) {
+        hex.active = true;
+        hex.setFraction(province.getFraction());
+        hex.previousFraction = province.getFraction();
+        activeHexes.add(hex);
+        province.addHex(hex);
+
+        if (selectedProvince == province) {
+            selectAdjacentHexes(hex);
+        }
+    }
+
+
     public boolean buildTree(Province province, Hex hex) {
         if (province == null) return false;
         if (province.hasMoneyForTree()) {
@@ -992,6 +1104,18 @@ public class FieldManager implements EncodeableYio{
         // can't build tree
         tickleMoneySign();
         return false;
+    }
+
+
+    /**
+     * Places a unit without crushing whatever stands on the hex. Used when restoring a saved
+     * game: a unit docked at a port coexists with the port, so the usual crush path of
+     * addUnit() would wrongly destroy the building.
+     */
+    public Unit addUnitWithoutCrushingObject(Hex hex, int strength) {
+        if (hex == null) return null;
+        hex.addUnit(strength);
+        return hex.unit;
     }
 
 
@@ -1192,11 +1316,17 @@ public class FieldManager implements EncodeableYio{
         tempList.clear();
         propagationList.clear();
         ArrayList<Province> provincesAdded = new ArrayList<Province>();
+        // overseas beachheads have no land connection to the mainland, so the flood fill can
+        // never reach them from the captured hex's neighborhood; they are collected separately
+        // and re-attached to whatever mainland survives the split
+        ArrayList<ArrayList<Hex>> overseasComponents = new ArrayList<>();
         Hex startHex, tempHex, adjHex;
         hex.flag = true;
         gameController.getPredictableRandom().setSeed(hex.index1 + hex.index2);
-        for (int dir = 0; dir < 6; dir++) {
-            startHex = hex.getAdjacentHex(dir);
+        // seeding from the whole hex list (instead of just the captured hex's neighbors) is
+        // equivalent for a connected province, and additionally finds disconnected overseas parts
+        for (Hex seed : oldProvince.hexList) {
+            startHex = seed;
             if (!startHex.active || startHex.fraction != fraction || startHex.flag) continue;
             tempList.clear();
             propagationList.clear();
@@ -1214,7 +1344,9 @@ public class FieldManager implements EncodeableYio{
                     }
                 }
             }
-            if (tempList.size() >= 2) {
+            if (isOverseasComponent(tempList)) {
+                overseasComponents.add(new ArrayList<>(tempList));
+            } else if (tempList.size() >= 2) {
                 Province province = new Province(gameController, tempList);
                 province.money = 0;
                 if (!province.hasCapital()) {
@@ -1230,8 +1362,30 @@ public class FieldManager implements EncodeableYio{
         if (provincesAdded.size() > 0 && !(hex.objectInside == Obj.TOWN)) {
             getMaxProvinceFromList(provincesAdded).money = oldProvince.money;
         }
+        Province mainland = getMaxProvinceFromList(provincesAdded);
+        for (ArrayList<Hex> component : overseasComponents) {
+            if (mainland != null) {
+                for (Hex overseasHex : component) {
+                    mainland.addHex(overseasHex);
+                }
+            } else {
+                // the mainland is gone: the colony is cut off and collapses
+                for (Hex overseasHex : component) {
+                    overseasHex.overseasPart = false;
+                    destroyBuildingsOnHex(overseasHex);
+                }
+            }
+        }
         removeProvince(oldProvince);
         diplomacyManager.updateEntityAliveStatus(fraction);
+    }
+
+
+    private boolean isOverseasComponent(ArrayList<Hex> component) {
+        for (Hex hex : component) {
+            if (!hex.overseasPart) return false;
+        }
+        return true;
     }
 
 
@@ -1239,7 +1393,11 @@ public class FieldManager implements EncodeableYio{
         ArrayList<Province> adjacentProvinces = new ArrayList<Province>();
         Province p;
         for (int i = 0; i < 6; i++) {
-            p = getProvinceByHex(hex.getAdjacentHex(i));
+            Hex adjHex = hex.getAdjacentHex(i);
+            // touching a colony must not merge its distant motherland with a local province;
+            // instead the colony alone gets absorbed later, in checkToAbsorbOverseasParts()
+            if (adjHex.overseasPart) continue;
+            p = getProvinceByHex(adjHex);
             if (p != null && hex.sameFraction(p) && !adjacentProvinces.contains(p)) adjacentProvinces.add(p);
         }
         if (adjacentProvinces.size() >= 2) {
@@ -1268,9 +1426,14 @@ public class FieldManager implements EncodeableYio{
     public void joinHexToAdjacentProvince(Hex hex) {
         Province p;
         for (int i = 0; i < 6; i++) {
-            p = getProvinceByHex(hex.getAdjacentHex(i));
+            Hex adjacentHex = hex.getAdjacentHex(i);
+            p = getProvinceByHex(adjacentHex);
             if (p != null && hex.sameFraction(p)) {
                 p.addHex(hex);
+                // growing out of a beachhead: the new hex is as overseas as the hex it grew from
+                if (adjacentHex.overseasPart) {
+                    hex.overseasPart = true;
+                }
                 Hex h;
                 for (int j = 0; j < 6; j++) {
                     h = adjacentHex(hex, j);
@@ -1279,6 +1442,88 @@ public class FieldManager implements EncodeableYio{
                 return;
             }
         }
+    }
+
+
+    /**
+     * A colony stops being a colony the moment it gains a land border with friendly mainland.
+     * If that mainland is another province, the colony's hexes are handed over to it (only the
+     * overseas part moves - the motherland keeps its own territory and treasury).
+     */
+    public void checkToAbsorbOverseasParts(int fraction) {
+        boolean repeat = true;
+        while (repeat) {
+            repeat = false;
+            for (Province province : provinces) {
+                if (province.getFraction() != fraction) continue;
+                for (Hex hex : province.hexList) {
+                    if (!hex.overseasPart) continue;
+                    Province mainland = getAdjacentMainlandProvince(hex);
+                    if (mainland == null) continue;
+                    absorbOverseasComponent(hex, province, mainland);
+                    repeat = true; // hex lists changed, restart iteration
+                    break;
+                }
+                if (repeat) break;
+            }
+        }
+    }
+
+
+    private Province getAdjacentMainlandProvince(Hex hex) {
+        for (int dir = 0; dir < 6; dir++) {
+            Hex adjHex = hex.getAdjacentHex(dir);
+            if (!adjHex.active) continue;
+            if (adjHex.overseasPart) continue;
+            if (!adjHex.sameFraction(hex)) continue;
+            Province province = getProvinceByHex(adjHex);
+            if (province != null) return province;
+        }
+        return null;
+    }
+
+
+    private void absorbOverseasComponent(Hex startHex, Province owner, Province receiver) {
+        ArrayList<Hex> component = new ArrayList<>();
+        ArrayList<Hex> propagation = new ArrayList<>();
+        component.add(startHex);
+        propagation.add(startHex);
+        while (propagation.size() > 0) {
+            Hex tempHex = propagation.remove(0);
+            for (int i = 0; i < 6; i++) {
+                Hex adjHex = tempHex.getAdjacentHex(i);
+                if (!adjHex.active) continue;
+                if (!adjHex.overseasPart) continue;
+                if (!adjHex.sameFraction(startHex)) continue;
+                if (component.contains(adjHex)) continue;
+                component.add(adjHex);
+                propagation.add(adjHex);
+            }
+        }
+
+        for (Hex hex : component) {
+            hex.overseasPart = false;
+            if (owner == receiver) continue;
+            owner.hexList.remove(hex);
+            receiver.addHex(hex);
+        }
+    }
+
+
+    /**
+     * Finds a province of the given fraction that owns a hex adjacent to the given one.
+     * Used by amphibious landings, where the attacker arrives from the sea instead of
+     * from a province of its own.
+     */
+    public Province getAdjacentProvince(Hex hex, int fraction) {
+        for (int dir = 0; dir < 6; dir++) {
+            Hex adjHex = hex.getAdjacentHex(dir);
+            if (!adjHex.active) continue;
+            if (adjHex.fraction != fraction) continue;
+            Province province = getProvinceByHex(adjHex);
+            if (province != null) return province;
+        }
+        return null;
     }
 
 
@@ -1292,10 +1537,12 @@ public class FieldManager implements EncodeableYio{
         int previousObject = hex.objectInside;
         cleanOutHex(hex);
         int previousFraction = hex.fraction;
+        hex.overseasPart = false; // the conqueror decides anew whether this hex is a beachhead
         hex.setFraction(fraction);
         splitProvince(hex, previousFraction, previousObject);
         checkToUniteProvinces(hex);
         joinHexToAdjacentProvince(hex);
+        checkToAbsorbOverseasParts(fraction);
         ListIterator animIterator = animHexes.listIterator();
 
         for (int dir = 0; dir < 6; dir++) {

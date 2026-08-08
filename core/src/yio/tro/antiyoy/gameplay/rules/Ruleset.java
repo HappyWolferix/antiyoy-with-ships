@@ -30,10 +30,32 @@ public abstract class Ruleset {
     public abstract int getHexIncome(Hex hex);
 
 
+    /**
+     * The part of getHexIncome() that the building on the hex is responsible for, excluding the hex's
+     * own land income. Exists so the UI can advertise a farm as "+4" and a port as "+5" without
+     * hardcoding either number, and without claiming a profit in rulesets that don't pay one.
+     */
+    public abstract int getBuildingIncome(Hex hex);
+
+
     public abstract int getHexTax(Hex hex);
 
 
     public abstract int getUnitTax(int strength);
+
+
+    /**
+     * Full upkeep of a concrete unit: base pay by strength plus the flat ship surcharge while
+     * the unit has the ship flag (at sea or docked at a port). Every tax path that looks at an
+     * actual unit - hex tax, ships at sea - must go through this instead of getUnitTax(int).
+     */
+    public int getUnitTax(Unit unit) {
+        int tax = getUnitTax(unit.strength);
+        if (unit.ship) {
+            tax += GameRules.TAX_SHIP;
+        }
+        return tax;
+    }
 
 
     public abstract boolean canBuildUnit(Province province, int strength);

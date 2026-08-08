@@ -57,18 +57,29 @@ public class RulesetGeneric extends Ruleset{
             return 0;
         }
 
-        if (hex.objectInside == Obj.FARM) {
-            return GameRules.FARM_INCOME + 1;
+        // a port hex is reclaimed water, not farmable land - it pays its building income and
+        // nothing else, so a port is worth exactly PORT_INCOME, not PORT_INCOME + 1
+        if (hex.objectInside == Obj.PORT) {
+            return GameRules.PORT_INCOME;
         }
 
-        return 1;
+        return getBuildingIncome(hex) + 1;
+    }
+
+
+    @Override
+    public int getBuildingIncome(Hex hex) {
+        if (hex.objectInside == Obj.FARM) return GameRules.FARM_INCOME;
+        if (hex.objectInside == Obj.PORT) return GameRules.PORT_INCOME;
+
+        return 0;
     }
 
 
     @Override
     public int getHexTax(Hex hex) {
         if (hex.containsUnit()) {
-            return getUnitTax(hex.unit.strength);
+            return getUnitTax(hex.unit);
         }
 
         if (hex.objectInside == Obj.TOWER) return GameRules.TAX_TOWER;

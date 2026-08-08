@@ -43,7 +43,7 @@ public class LegacyExportManager {
 
 
     private String getHexString(Hex hex) {
-        // index1 - index2 - fraction - objectInside - unitStrength - unitReadyToMove - money
+        // index1 - index2 - fraction - objectInside - unitStrength - unitReadyToMove - money - overseasPart
 
         StringBuilder builder = new StringBuilder();
         builder.append(hex.index1);
@@ -69,6 +69,8 @@ public class LegacyExportManager {
         } else {
             builder.append(" " + 10);
         }
+
+        builder.append(" ").append(hex.overseasPart ? 1 : 0);
 
         return builder.toString();
     }

@@ -212,6 +212,7 @@ public class SelectionManager {
                 return false;
             case SelectionTipType.TOWER:
             case SelectionTipType.FARM:
+            case SelectionTipType.PORT:
             case SelectionTipType.STRONG_TOWER:
             case SelectionTipType.TREE:
                 return true;
@@ -334,7 +335,24 @@ public class SelectionManager {
             return;
         }
 
+        // ships live outside the province machinery, so their moves are handled before
+        // the usual selection reactions - including moves that target water hexes
+        if (selectedUnit != null && selectedUnit.ship) {
+            if (focusedHex.inMoveZone && focusedHex != selectedUnit.currentHex && selectedUnit.isReadyToMove()) {
+                applyShipMoveAction(focusedHex);
+                return;
+            }
+            selectedUnit = null;
+            hideMoveZone();
+        }
+
         if (!focusedHex.active) {
+            // water is tappable in two situations: placing a port on it, or selecting a ship
+            if (isReadyToBuild() && tipType == SelectionTipType.PORT && focusedHex.inMoveZone) {
+                reactionBuildStuff();
+                return;
+            }
+            if (checkToSelectShip()) return;
             deselectAll();
             return;
         }
@@ -431,9 +449,37 @@ public class SelectionManager {
     }
 
 
+    private boolean checkToSelectShip() {
+        if (!focusedHex.containsUnit()) return false;
+        if (!focusedHex.unit.ship) return false;
+        if (!focusedHex.unit.isReadyToMove()) return false;
+        if (!gameController.isCurrentTurn(focusedHex.unit.getFraction())) return false;
+
+        SoundManagerYio.playSound(SoundManagerYio.soundSelectUnit);
+        applyUnitSelection(focusedHex.unit);
+        return true;
+    }
+
+
+    private void applyShipMoveAction(Hex targetHex) {
+        // a ship at sea has no province; a docked one still stands on province territory
+        Province province = gameController.fieldManager.getProvinceByHex(selectedUnit.currentHex);
+        Sound sound = gameController.isCurrentTurn(targetHex.fraction) || !targetHex.active
+                ? SoundManagerYio.soundWalk : SoundManagerYio.soundAttack;
+
+        applyUnitMoveAction(selectedUnit, targetHex, province, sound);
+    }
+
+
     public void applyUnitSelection(Unit unit) {
         selectedUnit = unit;
         MoveZoneManager moveZoneManager = gameController.fieldManager.moveZoneManager;
+        if (unit.ship) {
+            moveZoneManager.detectAndShowMoveZoneForShip(unit);
+            selUnitFactor.setValues(0, 0);
+            selUnitFactor.appear(3, 2);
+            return;
+        }
         moveZoneManager.detectAndShowMoveZone(selectedUnit.currentHex, selectedUnit.strength, GameRules.UNIT_MOVE_LIMIT);
         selUnitFactor.setValues(0, 0);
         selUnitFactor.appear(3, 2);
@@ -442,7 +488,11 @@ public class SelectionManager {
 
     private void reactionSelectProvince() {
         if (!gameController.isCurrentTurn(focusedHex.fraction)) return;
-        if (!gameController.fieldManager.hexHasNeighbourWithFraction(focusedHex, gameController.getTurn())) return;
+        // the neighbor check filters out stray single hexes that belong to no province, but a
+        // lone beachhead is a legitimate part of its overseas province despite having no
+        // same-fraction neighbors - tapping it must select that province
+        if (!gameController.fieldManager.hexHasNeighbourWithFraction(focusedHex, gameController.getTurn())
+                && !focusedHex.overseasPart) return;
 
         applyProvinceSelection(focusedHex);
     }
@@ -581,6 +631,10 @@ public class SelectionManager {
                 Province selectedProvince = gameController.fieldManager.selectedProvince;
                 if (selectedProvince == null) return 9999;
                 return selectedProvince.getCurrentFarmPrice();
+            case SelectionTipType.PORT:
+                Province provinceForPort = gameController.fieldManager.selectedProvince;
+                if (provinceForPort == null) return 9999;
+                return provinceForPort.getCurrentPortPrice();
             case SelectionTipType.STRONG_TOWER:
                 return GameRules.PRICE_STRONG_TOWER;
             case SelectionTipType.TREE:
@@ -608,6 +662,11 @@ public class SelectionManager {
                     gameController.fieldManager.buildFarm(selectedProvince, focusedHex);
                 }
                 break;
+            case SelectionTipType.PORT:
+                if (!focusedHex.containsTree() && !focusedHex.containsUnit()) {
+                    gameController.fieldManager.buildPort(selectedProvince, focusedHex);
+                }
+                break;
             case SelectionTipType.STRONG_TOWER:
                 if (!focusedHex.containsTree() && !focusedHex.containsUnit()) {
                     gameController.fieldManager.buildStrongTower(selectedProvince, focusedHex);
@@ -627,6 +686,12 @@ public class SelectionManager {
 
 
     private boolean canBuildOnHex(Hex focusedHex, int tipType) {
+        // the port target is a water hex, which can never be 'selected' - the move zone,
+        // built from the province's own towns and farms, is the whole validity check
+        if (tipType == SelectionTipType.PORT) {
+            return !focusedHex.active && focusedHex.inMoveZone;
+        }
+
         if (tipType == SelectionTipType.STRONG_TOWER) { // strong tower
             return focusedHex.selected && (!focusedHex.containsBuilding() || focusedHex.objectInside == Obj.TOWER);
         }

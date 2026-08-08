@@ -10,5 +10,6 @@ public class SelectionTipType {
     public static final int FARM = 5;
     public static final int STRONG_TOWER = 6;
     public static final int TREE = 7;
+    public static final int PORT = 8;
 
 }

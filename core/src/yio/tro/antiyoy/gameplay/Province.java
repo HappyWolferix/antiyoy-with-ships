@@ -181,7 +181,25 @@ public class Province {
             taxes += gameController.ruleset.getHexTax(hex);
         }
 
+        taxes += getShipsAtSeaTaxes();
+
         return taxes;
+    }
+
+
+    /**
+     * Ships at sea stand on water hexes that belong to no province, but their upkeep doesn't
+     * stop at the shoreline - it is paid by the province they sailed from.
+     */
+    public int getShipsAtSeaTaxes() {
+        int sum = 0;
+        for (Unit unit : gameController.getUnitList()) {
+            if (!unit.ship) continue;
+            if (unit.currentHex.active) continue;
+            if (unit.getOriginProvince() != this) continue;
+            sum += gameController.ruleset.getUnitTax(unit);
+        }
+        return sum;
     }
 
 
@@ -189,8 +207,9 @@ public class Province {
         int sum = 0;
         for (Hex hex : hexList) {
             if (!hex.containsUnit()) continue;
-            sum += gameController.ruleset.getUnitTax(hex.unit.strength);
+            sum += gameController.ruleset.getUnitTax(hex.unit);
         }
+        sum += getShipsAtSeaTaxes();
         return sum;
     }
 
@@ -327,6 +346,23 @@ public class Province {
     }
 
 
+    public boolean hasMoneyForPort() {
+        return money >= getCurrentPortPrice();
+    }
+
+
+    /**
+     * Doubles per port already standing in this province: 20, 40, 80, 160... The exponent is clamped
+     * because the shift would otherwise overflow int somewhere around the 27th port and start
+     * handing out ports for negative money.
+     */
+    public int getCurrentPortPrice() {
+        int ports = Math.min(countObjects(Obj.PORT), 20);
+
+        return GameRules.PRICE_PORT << ports;
+    }
+
+
     public boolean hasMoneyForStrongTower() {
         return money >= GameRules.PRICE_STRONG_TOWER;
     }
@@ -389,7 +425,7 @@ public class Province {
     }
 
 
-    void addHex(Hex hex) {
+    public void addHex(Hex hex) {
         if (containsHex(hex)) return;
         ListIterator iterator = hexList.listIterator();
         iterator.add(hex);

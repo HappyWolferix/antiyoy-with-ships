@@ -20,6 +20,7 @@ public abstract class RepAction {
     public static final int UNIT_DIED_FROM_STARVATION = 8;
     public static final int HEX_CHANGED_FRACTION = 9;
     public static final int UNIT_SPAWNED = 10;
+    public static final int PORT_BUILT = 11;
 
     public int type;
 

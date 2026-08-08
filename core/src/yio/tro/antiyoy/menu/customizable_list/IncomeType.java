@@ -6,6 +6,8 @@ public enum IncomeType {
 
     farms,
 
+    ports,
+
     diplomacy,
 
     units,

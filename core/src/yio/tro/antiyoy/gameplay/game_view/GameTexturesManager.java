@@ -17,10 +17,11 @@ public class GameTexturesManager {
     public TextureRegion blackCircleTexture, exclamationMarkTexture, forefingerTexture;
     TextureRegion animationTextureRegion, blackBorderTexture;
     TextureRegion hexGreen, hexRed, hexBlue, hexYellow, hexCyan, hexColor1, hexColor2, hexColor3;
+    public TextureRegion hexHighlight;
     public TextureRegion blackPixel, grayPixel, selectionPixel, shadowHexTexture, gradientShadow, transCircle1, transCircle2, selUnitShadow;
     TextureRegion sideShadow, responseAnimHexTexture, selectionBorder, defenseIcon;
     public Storage3xTexture manTextures[], palmTexture, houseTexture, towerTexture, graveTexture, pineTexture;
-    public Storage3xTexture castleTexture, strongTowerTexture, farmTexture[];
+    public Storage3xTexture castleTexture, strongTowerTexture, portTexture, shipTexture, farmTexture[];
     TextureRegion hexColor4, hexColor5, hexColor6;
     public AtlasLoader atlasLoader;
 
@@ -57,6 +58,8 @@ public class GameTexturesManager {
 
     private void loadHexTextures() {
         SkinManager skinManager = getSkinManager();
+        // white hex shape drawn at low alpha over naval territory (ports, colonies) to brighten it
+        hexHighlight = GraphicsYio.loadTextureRegion("hex_highlight.png", false);
         hexGreen = skinManager.loadHexTexture("green");
         hexRed = skinManager.loadHexTexture("red");
         hexBlue = skinManager.loadHexTexture("blue");
@@ -89,6 +92,19 @@ public class GameTexturesManager {
         farmTexture[1] = new Storage3xTexture(atlasLoader, "farm2.png");
         farmTexture[2] = new Storage3xTexture(atlasLoader, "farm3.png");
         strongTowerTexture = new Storage3xTexture(atlasLoader, "strong_tower.png");
+        // Only the default skin's atlas has been repacked with the naval sprites so far. Falling back
+        // keeps every other skin playable instead of crashing on a missing atlas entry.
+        if (atlasLoader.hasTexture("anchor.png")) {
+            portTexture = new Storage3xTexture(atlasLoader, "anchor.png");
+        } else {
+            portTexture = farmTexture[0];
+        }
+        // sailing units are drawn as this ship instead of their normal sprite
+        if (atlasLoader.hasTexture("ship.png")) {
+            shipTexture = new Storage3xTexture(atlasLoader, "ship.png");
+        } else {
+            shipTexture = null;
+        }
     }
 
 
@@ -181,10 +197,15 @@ public class GameTexturesManager {
 
 
     TextureRegion getUnitTexture(Unit unit) {
-        if (!getGameController().isPlayerTurn() && unit.moveFactor.get() < 1 && unit.moveFactor.get() > 0.1) {
-            return manTextures[unit.strength - 1].getLowest();
+        Storage3xTexture storage = manTextures[unit.strength - 1];
+        // a unit at sea is drawn as a ship; skins without the ship sprite keep the normal look
+        if (unit.ship && shipTexture != null) {
+            storage = shipTexture;
         }
-        return manTextures[unit.strength - 1].getTexture(gameView.currentZoomQuality);
+        if (!getGameController().isPlayerTurn() && unit.moveFactor.get() < 1 && unit.moveFactor.get() > 0.1) {
+            return storage.getLowest();
+        }
+        return storage.getTexture(gameView.currentZoomQuality);
     }
 
 
