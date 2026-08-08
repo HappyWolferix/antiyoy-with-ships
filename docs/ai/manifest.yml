@@ -1,0 +1,191 @@
+# Context-loading manifest for AI assistants working on Antiyoy.
+#
+# How to use (works for small models too — follow it literally):
+#   1. Match the task's words against `keywords` below. Ties break toward the more specific entry.
+#   2. Read the matched docs, and the AGENTS.md overlay of every source folder you will touch.
+#   3. Only then open source files — and only the ones you are changing.
+#   4. Before finishing, run the feedback loops listed under `feedback_loops` for your change type.
+#
+# Reading the docs named here answers ~90% of questions without a codebase search.
+
+version: 1
+entrypoint: AGENTS.md
+
+project:
+  name: antiyoy-with-ships
+  description: >
+    Turn-based hex strategy game (libGDX / Java 6-era source). Fork of yiotro/antiyoy.
+    Despite the repo name, no naval layer exists yet — combat is the original rank-based
+    model. Desktop gradle scaffolding and docs are additions of this AI-dev setup.
+  language: java
+  ui_framework: libGDX (hand-rolled UI, no Scene2D widgets)
+  source_root: core/src/yio/tro/antiyoy/
+  run: "make run"
+  entry_point: core/src/yio/tro/antiyoy/YioGdxGame.java
+
+# Rules that apply to every change, always load these.
+rules:
+  alwaysApply:
+    - docs/ai/rules/code-style.md
+    - docs/ai/rules/boundaries.md
+    - docs/ai/rules/verification.md
+    - docs/ai/rules/documentation.md
+
+# Folder overlays: when a change touches files under `appliesTo`, load that AGENTS.md
+# after the root one. Deeper overlays add local rules; they never override root rules.
+folders:
+  - path: core/AGENTS.md
+    appliesTo: ["core/**"]
+    keywords: [core, game logic, simulation, libgdx]
+    description: The whole game. Java 6 source level, entry class, package map pointer.
+  - path: core/src/yio/tro/antiyoy/gameplay/AGENTS.md
+    appliesTo: ["core/src/yio/tro/antiyoy/gameplay/**"]
+    keywords: [gameplay, field, hex, province, unit, combat, rules, economy,
+               turn, save, persistence, replay, editor, campaign, diplomacy, fog of war]
+    description: Simulation core — field, combat, rules, economy, persistence, turn cycle.
+  - path: core/src/yio/tro/antiyoy/ai/AGENTS.md
+    appliesTo: ["core/src/yio/tro/antiyoy/ai/**"]
+    keywords: [ai, opponent, bot, difficulty, balancer, AiMaster]
+    description: AI opponents — difficulty ladder, move gating, known blind spots.
+  - path: core/src/yio/tro/antiyoy/menu/AGENTS.md
+    appliesTo: ["core/src/yio/tro/antiyoy/menu/**"]
+    keywords: [menu, ui, hud, scene, button, widget, render, interface]
+    description: All UI — hand-rolled scenes and widgets, no Scene2D.
+  - path: desktop/AGENTS.md
+    appliesTo: ["desktop/**"]
+    keywords: [desktop, launcher, lwjgl, window, gradle run, verify harness]
+    description: Desktop launcher + VerifyHarness scaffolding (additions; upstream ships none).
+  - path: tools/AGENTS.md
+    appliesTo: ["tools/**"]
+    keywords: [tools, atlas, sprites, RebuildAtlas, validate]
+    description: Offline build tools — atlas/sprite regeneration, docs validator.
+  - path: assets/AGENTS.md
+    appliesTo: ["assets/**"]
+    keywords: [assets, texture, atlas, png, skin, sound, music, font, language]
+    description: Game assets; sprite pngs are sources, atlases are generated.
+
+# Read docs/architecture/overview.md first for any non-trivial task.
+always_read:
+  - docs/architecture/overview.md
+
+docs:
+  - path: docs/architecture/overview.md
+    summary: Codebase map, key classes, module layout, conventions, where to change what.
+    keywords: [architecture, overview, structure, where is, layout, package, entry point,
+               GameController, FieldManager, Hex, Province, GameRules, conventions, onboarding,
+               getting started, build, run, gradle, makefile]
+    answers:
+      - "Which file handles X?"
+      - "How is the codebase organised?"
+      - "How do I build and run it?"
+
+  - path: docs/architecture/decisions.md
+    summary: Upstream design choices to respect and the decisions of this AI-dev scaffolding.
+    keywords: [decision, decisions, why, rationale, design, fork, history, diagram, upstream]
+    answers:
+      - "Why is it built this way?"
+      - "What does this setup add versus upstream?"
+
+  - path: docs/architecture/combat.md
+    summary: >
+      The rank-based combat model — strength tiers 1..4, positional defense via
+      Hex.getDefenseNumber(), capture legality (canUnitAttackHex), merging, instant kills.
+    keywords: [combat, battle, attack, defense, strength, tier, capture, kill, merge,
+               getDefenseNumber, canUnitAttackHex, protection, tower defense, unit vs unit]
+    answers:
+      - "What happens when unit A attacks unit B / a tower?"
+      - "Why can't my unit capture that hex?"
+      - "How does merging work?"
+
+  - path: docs/architecture/units-and-buildings.md
+    summary: Obj ids, unit strengths/costs/upkeep, towers, farms, capitals, trees, graves, movement.
+    keywords: [unit, units, building, buildings, tower, farm, capital, tree, palm, grave,
+               Obj, strength, cost, upkeep, movement, move zone, MoveZoneManager]
+    answers:
+      - "What does each Obj id mean?"
+      - "What are unit stats and prices?"
+      - "How does unit movement work?"
+
+  - path: docs/architecture/economy.md
+    summary: Province money, income, taxes/upkeep, bankruptcy, farm price scaling, Ruleset formulas.
+    keywords: [economy, money, income, tax, taxes, upkeep, profit, bankruptcy, starve,
+               farm price, balance, Ruleset, RulesetGeneric, RulesetSlay, slay]
+    answers:
+      - "How is income/upkeep computed?"
+      - "What happens when a province runs out of money?"
+
+  - path: docs/architecture/turn-cycle.md
+    summary: The exact ordered sequence of a turn — start/end actions, AI turns, snapshots, match end.
+    keywords: [turn, turn cycle, end turn, turn order, income applied, trees spread,
+               snapshot, undo, LevelSnapshot, match end, win, lose]
+    answers:
+      - "What happens exactly when a turn ends?"
+      - "How does undo work?"
+
+  - path: docs/architecture/ai-opponent.md
+    summary: The AI difficulty ladder, how each level decides moves, AiMaster, known blind spots.
+    keywords: [ai, opponent, bot, difficulty, easy, normal, hard, expert, balancer,
+               AiMaster, AttackManager, DefenseManager, AiFactory, blind spot]
+    answers:
+      - "How does the AI pick its moves?"
+      - "What is the difference between difficulties?"
+
+  - path: docs/architecture/persistence.md
+    summary: Save/level-code string encodings, preferences storage, replays, append-only invariants.
+    keywords: [save, load, persistence, encode, decode, level code, import, export,
+               preferences, replay, GameSaver, EncodeManager, DecodeManager, legacy, format]
+    answers:
+      - "How are games saved and loaded?"
+      - "What is the level code format?"
+      - "Can I change/renumber an Obj id?"
+
+  - path: docs/architecture/ui.md
+    summary: Hand-rolled UI — MenuControllerYio, scenes, buttons, in-game HUD, rendering, animations.
+    keywords: [ui, menu, scene, button, hud, widget, render, MenuControllerYio, ButtonYio,
+               InterfaceElement, selection tip, FactorYio, animation, font, sprite]
+    answers:
+      - "How do I add a button/scene?"
+      - "How does the in-game HUD work?"
+
+# Task routing: common task shapes → what to load. Use with the keywords above.
+task_routing:
+  - task: "change a balance number (price, income, strength)"
+    load: [docs/architecture/economy.md, docs/architecture/units-and-buildings.md]
+    touch: [core/src/yio/tro/antiyoy/gameplay/rules/]
+  - task: "change combat/capture behaviour"
+    load: [docs/architecture/combat.md, docs/architecture/units-and-buildings.md]
+    touch: [core/src/yio/tro/antiyoy/gameplay/]
+  - task: "add or change a UI element"
+    load: [docs/architecture/ui.md]
+    touch: [core/src/yio/tro/antiyoy/menu/]
+  - task: "change AI behaviour or difficulty"
+    load: [docs/architecture/ai-opponent.md, docs/architecture/combat.md]
+    touch: [core/src/yio/tro/antiyoy/ai/]
+  - task: "anything touching saves, level codes, replays"
+    load: [docs/architecture/persistence.md]
+    touch: [core/src/yio/tro/antiyoy/gameplay/data_storage/]
+  - task: "turn order / end-turn effects"
+    load: [docs/architecture/turn-cycle.md]
+    touch: [core/src/yio/tro/antiyoy/gameplay/]
+  - task: "build, run, tooling, sprites"
+    load: [docs/ai/references/command-matrix.md, RUNNING.md]
+    touch: [desktop/, tools/, Makefile]
+  - task: "docs or AGENTS.md maintenance"
+    load: [docs/ai/rules/documentation.md]
+    touch: [docs/, AGENTS.md]
+
+# Feedback loops by change type — details in docs/ai/rules/verification.md
+feedback_loops:
+  docs_change: ["make validate-ai-docs"]
+  java_change: ["make build", "make run"]
+  tools_or_sprites: ["make sprites"]
+  behaviour_change: ["make build", "make run", "reread matched docs/architecture/* doc"]
+
+# Gotchas — read the matching one before touching that area.
+gotchas:
+  - "`strength` is both combat rank and tier id: merging caps and AI unit-building are arithmetic over 1..4."
+  - "`Obj` ids and all save encodings are append-only; renumbering breaks saves and level codes."
+  - "libGDX is pinned to 1.9.10 — 1.9.11 breaks InputProcessor.scrolled(int)."
+  - "gameplay/tests/ are in-game debug screens, not unit tests. There is no test framework."
+  - "The game must run with assets/ as working directory (gradle run task handles it)."
+  - "Despite the repo name, there is no ship/port/naval code in this codebase yet."

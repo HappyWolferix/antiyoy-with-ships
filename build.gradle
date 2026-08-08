@@ -1,0 +1,85 @@
+// Root build file for running Antiyoy on the desktop.
+//
+// The upstream repo ships only `core/src` + `assets`, so this file (plus
+// settings.gradle and the `desktop` module) is the minimal scaffolding needed
+// to compile and launch the game without going through the gdx-setup tool.
+
+buildscript {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+allprojects {
+    apply plugin: 'eclipse'
+    apply plugin: 'idea'
+
+    ext {
+        appName = 'antiyoy'
+        // Pinned deliberately: libGDX 1.9.11 changed InputProcessor.scrolled()
+        // from (int, int) to (float, float). YioGdxGame implements the old
+        // signature, so anything newer than 1.9.10 fails to compile without
+        // patching upstream source.
+        gdxVersion = '1.9.10'
+    }
+
+    repositories {
+        mavenCentral()
+        maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+    }
+}
+
+project(':core') {
+    apply plugin: 'java-library'
+
+    dependencies {
+        api "com.badlogicgames.gdx:gdx:$gdxVersion"
+        api "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+    }
+}
+
+project(':desktop') {
+    apply plugin: 'java'
+    apply plugin: 'application'
+
+    dependencies {
+        implementation project(':core')
+        implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+        implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+        implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
+    }
+
+    application {
+        // -PmainClass=... swaps in the verify harness without touching the default launcher
+        mainClass = project.findProperty('mainClass') ?: 'yio.tro.antiyoy.desktop.DesktopLauncher'
+    }
+
+    run {
+        // The game loads every asset with a bare relative path
+        // (Gdx.files.internal("splash.png"), ...), so the process has to be
+        // started from inside the assets folder.
+        workingDir = rootProject.file('assets')
+        ignoreExitValue = true
+        if (project.hasProperty('harnessDir')) {
+            systemProperty 'harness.dir', project.property('harnessDir')
+        }
+    }
+}
+
+// core/build.gradle is an upstream file that pins sourceCompatibility to 1.6,
+// which javac 21 no longer accepts (8 is the floor). Override it after the
+// subproject scripts are evaluated so the upstream file stays untouched.
+subprojects {
+    afterEvaluate {
+        tasks.withType(JavaCompile).configureEach {
+            sourceCompatibility = '8'
+            targetCompatibility = '8'
+            options.encoding = 'UTF-8'
+            // Java 8 bytecode is obsolete to javac 21, and the ~90k LOC of
+            // Java 6 era code is noisy. Keep the build output readable.
+            options.compilerArgs << '-Xlint:none'
+            options.warnings = false
+        }
+    }
+}
