@@ -300,6 +300,7 @@ public class DefenseManager {
             c++;
             if (c == 1000) {
                 System.out.println("DefenseManager.fightDirectly");
+                break;
             }
             Unit enemyUnit = getStrongestAdjacentUnit(group);
             if (enemyUnit == null) break;
@@ -482,8 +483,7 @@ public class DefenseManager {
         boolean isReallyNeeded = doesHexReallyNeedDefense(ownedHex);
         if (!isReallyNeeded && !aiMaster.canAffordTaxChange(taxChange)) return false;
 
-        aiMaster.buildUnit(targetHex, necessaryStrength);
-        return true;
+        return aiMaster.buildUnit(targetHex, necessaryStrength);
     }
 
 

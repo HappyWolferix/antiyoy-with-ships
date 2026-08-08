@@ -115,12 +115,54 @@ public class VerifyHarness extends YioGdxGame {
             ack(info());
         } else if (cmd.equals("hex")) {
             ack(hexInfo(Integer.parseInt(t[1]), Integer.parseInt(t[2])));
+        } else if (cmd.equals("aimatch")) {
+            int maxMoves = t.length > 2 ? Integer.parseInt(t[2]) : 800;
+            ack(runAiMatch(Integer.parseInt(t[1]), maxMoves));
         } else if (cmd.equals("quit")) {
             ack("bye");
             Gdx.app.exit();
         } else {
             ack("unknown command: " + line);
         }
+    }
+
+
+    /**
+     * Runs a full AI-only skirmish (4 fractions, medium map) at the given difficulty and pumps
+     * the game loop synchronously until a winner emerges. The cheapest way to prove the AI can
+     * still finish a match after a rules change.
+     */
+    private String runAiMatch(int difficulty, int maxMoves) {
+        yio.tro.antiyoy.gameplay.loading.LoadingParameters instance =
+                yio.tro.antiyoy.gameplay.loading.LoadingParameters.getInstance();
+        instance.loadingType = yio.tro.antiyoy.gameplay.loading.LoadingType.skirmish;
+        instance.levelSize = yio.tro.antiyoy.gameplay.LevelSize.MEDIUM;
+        instance.playersNumber = 0;
+        instance.fractionsQuantity = 4;
+        instance.difficulty = difficulty;
+        instance.colorOffset = 0;
+        instance.slayRules = false;
+        instance.fogOfWar = false;
+        instance.diplomacy = false;
+        instance.genProvinces = 0;
+        instance.treesPercentageIndex = 2;
+        yio.tro.antiyoy.gameplay.loading.LoadingManager.getInstance().startGame(instance);
+
+        yio.tro.antiyoy.gameplay.DebugFlags.testMode = true;
+        yio.tro.antiyoy.gameplay.DebugFlags.testWinner = -1;
+        gamePaused = false;
+
+        int c = maxMoves;
+        while (yio.tro.antiyoy.gameplay.DebugFlags.testWinner == -1 && c > 0) {
+            gameController.move();
+            c--;
+        }
+        yio.tro.antiyoy.gameplay.DebugFlags.testMode = false;
+
+        return "aimatch difficulty=" + difficulty
+                + " winner=" + yio.tro.antiyoy.gameplay.DebugFlags.testWinner
+                + " turns=" + gameController.turn
+                + " movesLeft=" + c;
     }
 
 

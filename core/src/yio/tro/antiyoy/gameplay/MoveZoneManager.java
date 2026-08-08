@@ -91,7 +91,11 @@ public class MoveZoneManager {
 
 
     public void detectAndShowMoveZoneForBuildingUnit(int strength) {
-        detectAndShowMoveZone(fieldManager.selectedHexes.get(0), strength);
+        moveZone = moveZoneDetection.detectMoveZoneForBuildingUnit(strength);
+        checkToForceMoveZoneAnims();
+        appearFactor.setValues(0, 0);
+        appearFactor.appear(3, 1.5);
+        getGameController().selectionManager.getBlackoutFactor().appear(3, 1.5);
     }
 
 

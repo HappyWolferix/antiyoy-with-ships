@@ -121,6 +121,11 @@ the next `TURN_ENDED`. Combat outcomes are not recorded — they replay determin
 the initial state plus these actions. `ReplaySaveSystem` (singleton, prefs file
 `antiyoy.replays`) manages slot keys and renames.
 
+Known gap: replays recorded before the spawn rule change (units can no longer be bought onto
+enemy hexes) may contain `RaUnitBuilt` actions targeting enemy territory; `buildUnit` now
+rejects those, so such actions log "Problem in RaUnitBuilt.perform()" and are skipped —
+old replays of that kind desync. Accepted limitation.
+
 ## Campaign and user levels
 
 - **Campaign**: `gameplay/campaign/CampaignLevelFactory.createCampaignLevel(index)` first

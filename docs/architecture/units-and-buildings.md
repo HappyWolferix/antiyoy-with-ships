@@ -47,12 +47,13 @@ Other `Unit` state: `readyToMove` (one action per turn, reset in
 `lastHex` plus a `FactorYio` for movement animation, and jump-animation
 fields. `Unit.getFraction()` is just `currentHex.fraction`.
 
-Buying: `FieldManager.buildUnit(province, hex, strength)` checks
+Buying: `FieldManager.buildUnit(province, hex, strength)` rejects any hex
+outside the buying province (**units cannot spawn in enemy territory** — this
+fork removed upstream's build-by-attack), checks
 `province.canBuildUnit(strength)` (money >= price), deducts the price, and
-either places the unit peacefully (merging if a friendly unit is there) or
-captures the target hex (`buildUnitByAttack`, subject to the same attack rule
-as movement). A freshly bought unit placed by attack is not ready to move;
-one bought onto friendly ground is.
+places the unit (merging if a friendly unit is there). A freshly bought unit
+is never ready to move — it can act only from the owner's next turn, and a
+merge involving a freshly bought unit is likewise not ready.
 
 ### Merging
 
@@ -116,9 +117,11 @@ friendly unit when the sum would exceed 4.
   limit; a non-friendly hex is added iff
   `GameController.canUnitAttackHex(strength, fraction, adjHex)` and never
   propagates further (enemy hexes are always terminal).
-- Selecting a unit uses `moveLimit = GameRules.UNIT_MOVE_LIMIT = 4`; building
-  a new unit uses the no-limit overload (9001), so a bought unit can be placed
-  anywhere in the province or on any capturable border hex.
+- Selecting a unit uses `moveLimit = GameRules.UNIT_MOVE_LIMIT = 4`. Buying a
+  unit does not use the move zone BFS at all:
+  `MoveZoneDetection.detectMoveZoneForBuildingUnit` highlights the selected
+  province's own hexes that can host the unit (no building, and any friendly
+  unit there must be mergeable).
 - Within friendly territory a unit may stop on any hex without a building,
   merging if a mergeable friendly unit is there (`Unit.canMoveToFriendlyHex`).
 - Mass march (`MassMarchManager`, triggered by hold via

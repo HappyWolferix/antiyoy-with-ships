@@ -20,6 +20,17 @@ flowchart TD
     ai -->|"same legality gates\nas the player"| fm
 ```
 
+## Fork gameplay decisions
+
+- **Units cannot spawn in enemy territory** (upstream allowed buying a unit directly onto an
+  attackable enemy hex). Rationale: the fork's direction is to keep combat simple and
+  positional — attacks happen by *moving* units, purchases only reinforce your own land — and
+  to prepare for the naval layer, where "teleporting" bought units across the border would
+  undermine ship transport. A freshly bought unit (or a merge containing one) can move only on
+  the next turn. Enforced centrally in `FieldManager.buildUnit`; the AI stages attackers on own
+  land instead (`findHexToStageUnit`). Consequence: replays recorded under the old rule may
+  desync (see [persistence.md](persistence.md)).
+
 ## Upstream design choices to respect
 
 | Decision | Rationale / consequence |

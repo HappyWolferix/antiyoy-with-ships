@@ -1559,14 +1559,33 @@ public class AiMaster extends AbstractAi {
     }
 
 
-    void buildUnit(Hex hex, int strength) {
+    boolean buildUnit(Hex hex, int strength) {
         if (strength > 4) {
             System.out.println("AiMaster.buildUnit: problem");
             Yio.printStackTrace();
         }
-        gameController.fieldManager.buildUnit(currentProvince, hex, strength);
+        // units cannot spawn in enemy territory - stage the new unit on own land near the target
+        if (!currentProvince.hexList.contains(hex)) {
+            hex = findHexToStageUnit(hex);
+            if (hex == null) return false;
+        }
+        boolean success = gameController.fieldManager.buildUnit(currentProvince, hex, strength);
         syncProvince();
         updateMoneyStats();
+        return success;
+    }
+
+
+    Hex findHexToStageUnit(Hex target) {
+        for (int dir = 0; dir < 6; dir++) {
+            Hex adjHex = target.getAdjacentHex(dir);
+            if (!adjHex.active) continue;
+            if (!currentProvince.hexList.contains(adjHex)) continue;
+            if (!adjHex.nothingBlocksWayForUnit()) continue;
+            return adjHex;
+        }
+
+        return getRandomEmptyHex(currentProvince.hexList);
     }
 
 

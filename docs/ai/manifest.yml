@@ -100,7 +100,8 @@ docs:
   - path: docs/architecture/units-and-buildings.md
     summary: Obj ids, unit strengths/costs/upkeep, towers, farms, capitals, trees, graves, movement.
     keywords: [unit, units, building, buildings, tower, farm, capital, tree, palm, grave,
-               Obj, strength, cost, upkeep, movement, move zone, MoveZoneManager]
+               Obj, strength, cost, upkeep, movement, move zone, MoveZoneManager,
+               spawn, spawning, buy unit, recruit]
     answers:
       - "What does each Obj id mean?"
       - "What are unit stats and prices?"
@@ -189,3 +190,4 @@ gotchas:
   - "gameplay/tests/ are in-game debug screens, not unit tests. There is no test framework."
   - "The game must run with assets/ as working directory (gradle run task handles it)."
   - "Despite the repo name, there is no ship/port/naval code in this codebase yet."
+  - "Units cannot spawn in enemy territory (fork rule): FieldManager.buildUnit rejects hexes outside the buying province, and fresh units can move only on the next turn. The AI stages attackers on own land instead (findHexToStageUnit)."

@@ -47,6 +47,28 @@ public class MoveZoneDetection {
     }
 
 
+    // units can only spawn on own territory, so the zone is the province itself
+    public ArrayList<Hex> detectMoveZoneForBuildingUnit(int strength) {
+        fieldManager.moveZoneManager.clear();
+        unFlagAllHexesInArrayList(fieldManager.activeHexes);
+        result.clear();
+        for (Hex hex : fieldManager.selectedProvince.hexList) {
+            if (!canBuildUnitOnHex(hex, strength)) continue;
+            hex.inMoveZone = true;
+            result.add(hex);
+        }
+
+        return result;
+    }
+
+
+    private boolean canBuildUnitOnHex(Hex hex, int strength) {
+        if (hex.containsBuilding()) return false;
+        if (hex.containsUnit() && !fieldManager.gameController.canMergeUnits(strength, hex.unit.strength)) return false;
+        return true;
+    }
+
+
     public ArrayList<Hex> detectMoveZone(Hex startHex, int strength) {
         return detectMoveZone(startHex, strength, 9001); // move limit is almost infinite
     }

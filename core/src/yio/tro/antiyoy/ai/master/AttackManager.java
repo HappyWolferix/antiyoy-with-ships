@@ -490,8 +490,7 @@ public class AttackManager {
 
         if (!isItAcceptableToAcquireUnitToAttack(hex, strength)) return false;
 
-        aiMaster.buildUnit(hex, strength);
-        return true;
+        return aiMaster.buildUnit(hex, strength);
     }
 
 

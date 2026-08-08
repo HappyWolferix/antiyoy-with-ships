@@ -868,6 +868,9 @@ public class FieldManager implements EncodeableYio{
     public boolean buildUnit(Province province, Hex hex, int strength) {
         if (province == null || hex == null) return false;
 
+        // units can only spawn on own territory
+        if (!province.hexList.contains(hex)) return false;
+
         if (!province.canBuildUnit(strength)) {
             tickleMoneySign();
             return false;
@@ -881,35 +884,23 @@ public class FieldManager implements EncodeableYio{
         gameController.getMatchStatistics().onMoneySpent(gameController.turn, GameRules.PRICE_UNIT * strength);
         gameController.replayManager.onUnitBuilt(province, hex, strength);
 
-        if (canUnitBeBuiltPeacefully(province, hex)) {
-            buildUnitPeacefully(hex, strength);
-        } else {
-            buildUnitByAttack(province, hex, strength);
-        }
+        buildUnitPeacefully(hex, strength);
         return true;
-    }
-
-
-    private void buildUnitByAttack(Province province, Hex hex, int strength) {
-        setHexFraction(hex, province.getFraction()); // must be called before object in hex destroyed
-        addUnit(hex, strength);
-        hex.unit.setReadyToMove(false);
-        hex.unit.stopJumping();
-        province.addHex(hex);
-        addAnimHex(hex);
-        gameController.updateCacheOnceAfterSomeTime();
     }
 
 
     private void buildUnitPeacefully(Hex hex, int strength) {
         if (!hex.containsUnit()) {
             addUnit(hex, strength);
+            // freshly spawned units can move only on the next turn
+            hex.unit.setReadyToMove(false);
+            hex.unit.stopJumping();
             return;
         }
 
         // merge units
         Unit newUnit = new Unit(gameController, hex, strength);
-        newUnit.setReadyToMove(true);
+        newUnit.setReadyToMove(false);
         gameController.matchStatistics.unitsDied++;
         gameController.mergeUnits(hex, newUnit, hex.unit);
     }
@@ -923,11 +914,6 @@ public class FieldManager implements EncodeableYio{
     private void tickleMoneySign() {
         if (!gameController.isPlayerTurn()) return;
         gameController.tickleMoneySign();
-    }
-
-
-    private boolean canUnitBeBuiltPeacefully(Province province, Hex hex) {
-        return hex.sameFraction(province);
     }
 
 

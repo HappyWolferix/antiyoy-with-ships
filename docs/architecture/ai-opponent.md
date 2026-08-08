@@ -54,7 +54,9 @@ Key shared heuristics in `ArtificialIntelligence`:
   hexes, i.e. prefer cutting into the enemy where it borders friendly land).
 - `tryToBuildUnits` — loops strength `i = 1..4`, gated by `Province.canAiAffordUnit(i)`
   (`money + (strength+1) * predictedProfit >= 0`), buying attackers via
-  `tryToAttackWithStrength`. A kick-start rule always buys a peasant if the province has ≤ 1
+  `tryToAttackWithStrength`. Because units cannot spawn in enemy territory, the new unit is
+  *staged* on an own hex next to the chosen target (`findHexToStageUnit`) and attacks from
+  there on the next turn. A kick-start rule always buys a peasant if the province has ≤ 1
   unit.
 - `needTowerOnHex` — build a tower where `getPredictedDefenseGainByNewTower(hex) >= 5`
   (number of newly-defended own hexes minus adjacent existing towers).
@@ -115,6 +117,12 @@ best `MasterAction`", each chosen by highest `thirst` (must be ≥ 1). Afterward
 free captures (`checkForCasualGrab`), pulls idle units to the perimeter, buys towers to
 protect the supply path of strength ≥ 2 armies (`checkToSupplyArmyWithTowers`, using
 capital-path `dependentUnits` vulnerability), and improves local defense.
+
+`AiMaster.buildUnit(hex, strength)` enforces the spawn rule centrally: when asked to build on
+a hex outside `currentProvince` (capture-with-money, peaceful expansion), it redirects to
+`findHexToStageUnit` — an own empty hex adjacent to the target, else any own empty hex — and
+returns whether a unit was actually built (loop guards in `AttackManager.tryToCaptureWithMoney`
+and `DefenseManager.tryToFightUnitWithMoney` depend on that return value).
 
 On PC, `AiMaster` for fraction 0 keeps a debug state string
 (`updateLastState()` = camera + `EncodeManager.perform()`, exportable to clipboard) and can

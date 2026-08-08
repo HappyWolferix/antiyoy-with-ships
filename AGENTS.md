@@ -62,6 +62,13 @@ requirement is ambiguous, **ask the user** instead of guessing.
 - **libGDX stays at 1.9.10** (1.9.11 breaks `InputProcessor.scrolled`).
 - Full list: [`docs/ai/rules/boundaries.md`](docs/ai/rules/boundaries.md).
 
+## Fork rules (differences from upstream)
+
+- **Units cannot spawn in enemy territory.** `FieldManager.buildUnit` only accepts hexes of
+  the buying province, and a freshly bought unit (or a merge containing one) can move only on
+  the next turn. The AI stages attackers on own land next to the target (`findHexToStageUnit`
+  in `ArtificialIntelligence` and `AiMaster`).
+
 ## Two traps worth knowing before you start
 
 - **Combat has no HP.** Capture legality is `RulesetGeneric.canUnitAttackHex`: strength 4

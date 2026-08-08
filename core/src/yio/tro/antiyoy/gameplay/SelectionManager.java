@@ -219,19 +219,6 @@ public class SelectionManager {
     }
 
 
-    private boolean isTipTypeUnit() {
-        switch (tipType) {
-            default:
-                return false;
-            case SelectionTipType.UNIT_1:
-            case SelectionTipType.UNIT_2:
-            case SelectionTipType.UNIT_3:
-            case SelectionTipType.UNIT_4:
-                return true;
-        }
-    }
-
-
     void hideTip() {
         tipFactor.destroy(1, 2);
         resetTipType();
@@ -556,34 +543,14 @@ public class SelectionManager {
 
         if (canBuildOnHex(focusedHex, tipType)) {
             buildSomethingOnHex(focusedHex);
-            // else attack by building unit
         } else {
-            if (unitBuildConditions()) {
-                fieldManager.buildUnit(fieldManager.selectedProvince, focusedHex, tipType);
-                fieldManager.selectedProvince = fieldManager.getProvinceByHex(focusedHex); // when uniting provinces, selected province object may change
-                fieldManager.selectAdjacentHexes(focusedHex);
-                resetTipType();
-                SoundManagerYio.playSound(SoundManagerYio.soundBuild);
-            } else {
-                fieldManager.setResponseAnimHex(focusedHex);
-            }
+            // units cannot spawn in enemy territory
+            fieldManager.setResponseAnimHex(focusedHex);
         }
 
         hideTip();
         fieldManager.showBuildOverlay();
         hideMoveZone();
-
-        return true;
-    }
-
-
-    private boolean unitBuildConditions() {
-        if (!focusedHex.isInMoveZone()) return false;
-        if (gameController.isCurrentTurn(focusedHex.fraction)) return false;
-        if (!isTipTypeUnit()) return false;
-        Province selectedProvince = gameController.fieldManager.selectedProvince;
-        if (selectedProvince == null) return false;
-        if (!selectedProvince.canBuildUnit(tipType)) return false;
 
         return true;
     }
