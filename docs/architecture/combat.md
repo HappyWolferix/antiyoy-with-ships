@@ -93,10 +93,11 @@ Two friendly units merge when a unit moves onto another
 allowed only if the sum is `<= 4` (`Ruleset.canMergeUnits` in both rulesets,
 and `GameController.canMergeUnits`). The merged unit is ready to move only if
 both inputs were. Buying a new unit onto an existing friendly unit merges the
-same way (`FieldManager.buildUnitPeacefully`), but the freshly bought unit
-counts as not ready, so the merge result cannot move until the next turn.
-Units can be bought only on the buying province's own territory — there is no
-attack-by-purchase.
+same way (`FieldManager.buildUnitPeacefully`); the freshly bought unit counts
+as ready, so the merge result is movable iff the existing unit still was.
+Units can be bought only on the buying province's own territory — capturing
+enemy hexes with fresh recruits means buying near the border and moving the
+unit, limiting the reach to its move zone.
 
 ## Trees, palms and graves (combat-adjacent)
 

@@ -282,13 +282,25 @@ public abstract class ArtificialIntelligence extends AbstractAi{
         ArrayList<Hex> attackableHexes = findAttackableHexes(province.getFraction(), moveZone);
         if (attackableHexes.size() == 0) return false;
 
-        // units cannot spawn in enemy territory - stage the new unit on own land near the target
+        // units cannot spawn in enemy territory - buy the unit on own land next to the target,
+        // then attack with it right away
         Hex bestHexForAttack = findMostAttractiveHex(attackableHexes, province, strength);
         Hex stagingHex = findHexToStageUnit(province, bestHexForAttack);
         if (stagingHex == null) return false;
 
         buildUnit(province, stagingHex, strength);
+        checkToAttackFromStagingHex(province, stagingHex, bestHexForAttack);
         return true;
+    }
+
+
+    private void checkToAttackFromStagingHex(Province province, Hex stagingHex, Hex target) {
+        if (!stagingHex.containsUnit()) return;
+        Unit unit = stagingHex.unit;
+        if (!unit.isReadyToMove()) return;
+        if (!stagingHex.isAdjacentTo(target)) return;
+        if (!target.canBeAttackedBy(unit)) return;
+        gameController.moveUnit(unit, target, province);
     }
 
 

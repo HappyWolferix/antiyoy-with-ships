@@ -1564,15 +1564,31 @@ public class AiMaster extends AbstractAi {
             System.out.println("AiMaster.buildUnit: problem");
             Yio.printStackTrace();
         }
-        // units cannot spawn in enemy territory - stage the new unit on own land near the target
+        // units cannot spawn in enemy territory - buy the unit on own land next to the target,
+        // then attack with it right away
+        Hex target = null;
         if (!currentProvince.hexList.contains(hex)) {
-            hex = findHexToStageUnit(hex);
+            target = hex;
+            hex = findHexToStageUnit(target);
             if (hex == null) return false;
         }
         boolean success = gameController.fieldManager.buildUnit(currentProvince, hex, strength);
+        if (success && target != null) {
+            checkToAttackFromStagingHex(hex, target);
+        }
         syncProvince();
         updateMoneyStats();
         return success;
+    }
+
+
+    private void checkToAttackFromStagingHex(Hex stagingHex, Hex target) {
+        if (!stagingHex.containsUnit()) return;
+        Unit unit = stagingHex.unit;
+        if (!unit.isReadyToMove()) return;
+        if (!stagingHex.isAdjacentTo(target)) return;
+        if (!target.canBeAttackedBy(unit)) return;
+        gameController.moveUnit(unit, target, currentProvince);
     }
 
 

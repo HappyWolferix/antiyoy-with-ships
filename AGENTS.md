@@ -65,9 +65,10 @@ requirement is ambiguous, **ask the user** instead of guessing.
 ## Fork rules (differences from upstream)
 
 - **Units cannot spawn in enemy territory.** `FieldManager.buildUnit` only accepts hexes of
-  the buying province, and a freshly bought unit (or a merge containing one) can move only on
-  the next turn. The AI stages attackers on own land next to the target (`findHexToStageUnit`
-  in `ArtificialIntelligence` and `AiMaster`).
+  the buying province. A freshly bought unit can move in the same turn, so attacking with
+  fresh recruits means buying near the border and moving — reach limited to one move zone.
+  The AI buys next to its target and attacks immediately (`findHexToStageUnit` +
+  `checkToAttackFromStagingHex` in `ArtificialIntelligence` and `AiMaster`).
 
 ## Two traps worth knowing before you start
 

@@ -892,15 +892,12 @@ public class FieldManager implements EncodeableYio{
     private void buildUnitPeacefully(Hex hex, int strength) {
         if (!hex.containsUnit()) {
             addUnit(hex, strength);
-            // freshly spawned units can move only on the next turn
-            hex.unit.setReadyToMove(false);
-            hex.unit.stopJumping();
             return;
         }
 
         // merge units
         Unit newUnit = new Unit(gameController, hex, strength);
-        newUnit.setReadyToMove(false);
+        newUnit.setReadyToMove(true);
         gameController.matchStatistics.unitsDied++;
         gameController.mergeUnits(hex, newUnit, hex.unit);
     }

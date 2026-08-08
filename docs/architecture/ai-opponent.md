@@ -55,9 +55,10 @@ Key shared heuristics in `ArtificialIntelligence`:
 - `tryToBuildUnits` — loops strength `i = 1..4`, gated by `Province.canAiAffordUnit(i)`
   (`money + (strength+1) * predictedProfit >= 0`), buying attackers via
   `tryToAttackWithStrength`. Because units cannot spawn in enemy territory, the new unit is
-  *staged* on an own hex next to the chosen target (`findHexToStageUnit`) and attacks from
-  there on the next turn. A kick-start rule always buys a peasant if the province has ≤ 1
-  unit.
+  bought on an own hex next to the chosen target (`findHexToStageUnit`) and immediately
+  attacks from there (`checkToAttackFromStagingHex`); if no adjacent own hex is free, it
+  stays staged for the next turn. A kick-start rule always buys a peasant if the province
+  has ≤ 1 unit.
 - `needTowerOnHex` — build a tower where `getPredictedDefenseGainByNewTower(hex) >= 5`
   (number of newly-defended own hexes minus adjacent existing towers).
 - `isAllowedToBuildNewUnit` — only limits builds when diplomacy is on and humans are playing:
@@ -120,9 +121,11 @@ capital-path `dependentUnits` vulnerability), and improves local defense.
 
 `AiMaster.buildUnit(hex, strength)` enforces the spawn rule centrally: when asked to build on
 a hex outside `currentProvince` (capture-with-money, peaceful expansion), it redirects to
-`findHexToStageUnit` — an own empty hex adjacent to the target, else any own empty hex — and
-returns whether a unit was actually built (loop guards in `AttackManager.tryToCaptureWithMoney`
-and `DefenseManager.tryToFightUnitWithMoney` depend on that return value).
+`findHexToStageUnit` — an own empty hex adjacent to the target, else any own empty hex — then
+attacks the original target immediately when the staged unit is adjacent and the capture is
+legal (`checkToAttackFromStagingHex`). It returns whether a unit was actually built (loop
+guards in `AttackManager.tryToCaptureWithMoney` and `DefenseManager.tryToFightUnitWithMoney`
+depend on that return value).
 
 On PC, `AiMaster` for fraction 0 keeps a debug state string
 (`updateLastState()` = camera + `EncodeManager.perform()`, exportable to clipboard) and can

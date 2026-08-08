@@ -52,8 +52,9 @@ outside the buying province (**units cannot spawn in enemy territory** — this
 fork removed upstream's build-by-attack), checks
 `province.canBuildUnit(strength)` (money >= price), deducts the price, and
 places the unit (merging if a friendly unit is there). A freshly bought unit
-is never ready to move — it can act only from the owner's next turn, and a
-merge involving a freshly bought unit is likewise not ready.
+is ready to move immediately, so attack-by-purchase still exists in a limited
+form: buy on your own land near the border, then move the unit — its reach is
+one move zone (`UNIT_MOVE_LIMIT`) from the hex it spawned on.
 
 ### Merging
 

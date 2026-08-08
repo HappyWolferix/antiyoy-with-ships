@@ -89,8 +89,9 @@ Consequences worth remembering:
 
 - Income lands at the *start* of a fraction's turn and starvation is checked immediately after,
   in the same step list.
-- A freshly bought unit cannot move (`FieldManager` builds it with `readyToMove == false`);
-  it becomes movable in step 3 of its owner's next turn start.
+- A freshly bought unit is ready to move in the same turn, but it can only spawn on own
+  territory (`FieldManager.buildUnit`), so its first-turn reach is one move zone from the
+  hex it was bought on.
 - `takeAwaySomeMoneyToAchieveBalance()` compensates at level start for the fact that every
   fraction except fraction 0 receives income before its first chance to act.
 
