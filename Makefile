@@ -5,6 +5,7 @@
 #
 #   make run     build if needed, then launch the game
 #   make build   compile only
+#   make apk     build a debug Android APK
 #   make clean   remove build output
 #   make sprites rebuild atlas textures + _low/_lowest pngs from full-size pngs
 
@@ -24,7 +25,7 @@ GRADLE := ./gradlew
 
 .DEFAULT_GOAL := run
 
-.PHONY: run build clean check-jdk sprites validate-ai-docs
+.PHONY: run build apk clean check-jdk sprites validate-ai-docs
 
 # Atlas directories to rebuild. field_elements is where sprite editing happens;
 # add more (e.g. assets/fog_of_war) if their pngs get edited too.
@@ -46,6 +47,11 @@ run: check-jdk
 
 build: check-jdk
 	$(GRADLE) :desktop:build
+
+apk: check-jdk
+	$(GRADLE) :android:assembleDebug
+	@echo ""
+	@echo "APK: android/build/outputs/apk/debug/android-debug.apk"
 
 clean: check-jdk
 	$(GRADLE) clean
