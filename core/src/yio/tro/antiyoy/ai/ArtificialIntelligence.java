@@ -9,6 +9,12 @@ import java.util.Random;
 
 public abstract class ArtificialIntelligence extends AbstractAi{
 
+    /**
+     * Buying a unit needs a free own hex to stage it on (see findHexToStageUnit). If buildings pave
+     * every hex, the province can never field a unit again - so leave at least this many hexes clear.
+     */
+    public static final int MIN_FREE_HEXES = 2;
+
     final Random random;
     protected ArrayList<Province> nearbyProvinces;
     protected ArrayList<Unit> unitsReadyToMove;
@@ -148,10 +154,31 @@ public abstract class ArtificialIntelligence extends AbstractAi{
 
     void tryToBuildTowers(Province province) {
         while (province.hasMoneyForTower()) {
+            if (buildingWouldSealProvince(province)) return;
             Hex hex = findHexThatNeedsTower(province);
             if (hex == null) return;
             gameController.fieldManager.buildTower(province, hex);
         }
+    }
+
+
+    protected int countNonBuildingHexes(Province province) {
+        int c = 0;
+        for (Hex hex : province.hexList) {
+            if (!hex.active) continue;
+            if (hex.containsBuilding()) continue;
+            c++;
+        }
+        return c;
+    }
+
+
+    /**
+     * True when one more building would leave the province with too few free hexes to ever stage a
+     * newly bought unit again.
+     */
+    protected boolean buildingWouldSealProvince(Province province) {
+        return countNonBuildingHexes(province) <= MIN_FREE_HEXES + 1;
     }
 
 

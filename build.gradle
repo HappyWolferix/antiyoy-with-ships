@@ -73,6 +73,10 @@ project(':desktop') {
         if (project.hasProperty('harnessDir')) {
             systemProperty 'harness.dir', project.property('harnessDir')
         }
+        // -PappArgs="20,300" feeds main(String[]) - used by AiSkirmishHarness
+        if (project.hasProperty('appArgs')) {
+            args project.property('appArgs').split(',')
+        }
     }
 }
 

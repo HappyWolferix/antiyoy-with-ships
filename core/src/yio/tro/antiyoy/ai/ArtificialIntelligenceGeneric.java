@@ -29,6 +29,7 @@ public abstract class ArtificialIntelligenceGeneric extends ArtificialIntelligen
         if (province.getExtraFarmCost() > MAX_EXTRA_FARM_COST) return;
 
         while (province.hasMoneyForFarm()) {
+            if (buildingWouldSealProvince(province)) return;
             if (!isOkToBuildNewFarm(province)) return;
             Hex hex = findGoodHexForFarm(province);
             if (hex == null) return;
@@ -38,7 +39,7 @@ public abstract class ArtificialIntelligenceGeneric extends ArtificialIntelligen
 
 
     protected boolean isOkToBuildNewFarm(Province srcProvince) {
-        if (srcProvince.money > 2 * srcProvince.getCurrentFarmPrice()) return true;
+        if (srcProvince.money > 2 * srcProvince.getCurrentFarmPrice() && !buildingWouldSealProvince(srcProvince)) return true;
 
         if (findHexThatNeedsTower(srcProvince) != null) return false;
 
@@ -57,13 +58,27 @@ public abstract class ArtificialIntelligenceGeneric extends ArtificialIntelligen
     }
 
 
+    /**
+     * Farms go into the interior, not onto the frontier: perimeter hexes are the staging spots units
+     * are bought on, and paving them cripples the province's ability to attack and defend.
+     */
     protected Hex findGoodHexForFarm(Province province) {
-        if (!hasProvinceGoodHexForFarm(province)) return null;
+        Hex result = null;
+        int bestScore = Integer.MIN_VALUE;
 
-        while (true) {
-            Hex hex = province.hexList.get(random.nextInt(province.hexList.size()));
-            if (isHexGoodForFarm(hex)) return hex;
+        for (Hex hex : province.hexList) {
+            if (!isHexGoodForFarm(hex)) continue;
+
+            int score = numberOfFriendlyHexesNearby(hex);
+            if (hex.isInPerimeter()) score -= 5;
+
+            if (result == null || score > bestScore) {
+                bestScore = score;
+                result = hex;
+            }
         }
+
+        return result;
     }
 
 

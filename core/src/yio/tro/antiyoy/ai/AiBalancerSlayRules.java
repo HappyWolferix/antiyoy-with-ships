@@ -11,12 +11,69 @@ public class AiBalancerSlayRules extends AiExpertSlayRules implements Comparator
     private int[] playerHexCount;
     private ArrayList<Hex> propagationList;
     private ArrayList<Hex> result;
+    protected final BalancerBrain brain;
+
+    /** Mode of the province currently being handled - see AiBalancerGenericRules for the rationale. */
+    protected ProvinceMode currentMode;
 
 
     public AiBalancerSlayRules(GameController gameController, int fraction) {
         super(gameController, fraction);
         propagationList = new ArrayList<>();
         result = new ArrayList<Hex>();
+        brain = new BalancerBrain(gameController);
+        currentMode = ProvinceMode.ECONOMY;
+    }
+
+
+    @Override
+    public void makeMove() {
+        brain.onMoveStarted();
+        super.makeMove();
+    }
+
+
+    /**
+     * Slay rules have no farms, so the only lever left is towers-versus-units and how carefully the
+     * province spends. As in the generic balancer, a mode never switches spending off - see the
+     * comment on AiBalancerGenericRules.spendMoney for the measurements behind that.
+     */
+    @Override
+    protected void spendMoney(Province province) {
+        currentMode = brain.getMode(province);
+
+        switch (currentMode) {
+            case EXPAND:
+                // free land needs units, not fortifications
+                tryToBuildUnits(province);
+                tryToBuildTowers(province);
+                break;
+            default:
+                tryToBuildTowers(province);
+                tryToBuildUnits(province);
+                break;
+        }
+    }
+
+
+    @Override
+    void tryToBuildUnits(Province province) {
+        tryToBuildUnitsOnPalms(province);
+
+        // a turtle keeps buying, it just insists on a longer runway
+        int turnsToSurvive = (currentMode == ProvinceMode.TURTLE) ? 8 : 5;
+
+        for (int i = 1; i <= 4; i++) {
+            if (!province.canAiAffordUnit(i, turnsToSurvive)) break;
+            while (canProvinceBuildUnit(province, i)) {
+                if (!tryToAttackWithStrength(province, i)) break;
+            }
+        }
+
+        // this is to kick start province
+        if (canProvinceBuildUnit(province, 1) && howManyUnitsInProvince(province) <= 1) {
+            tryToAttackWithStrength(province, 1);
+        }
     }
 
 
@@ -27,6 +84,8 @@ public class AiBalancerSlayRules extends AiExpertSlayRules implements Comparator
 
     @Override
     void decideAboutUnit(Unit unit, ArrayList<Hex> moveZone, Province province) {
+        currentMode = brain.getMode(province);
+
         // cleaning palms has highest priority
         if (unit.strength <= 2 && checkToCleanSomePalms(unit, moveZone, province)) return;
 
@@ -140,24 +199,12 @@ public class AiBalancerSlayRules extends AiExpertSlayRules implements Comparator
                 c += 5;
             }
         }
-        return c;
-    }
 
-
-    @Override
-    void tryToBuildUnits(Province province) {
-        tryToBuildUnitsOnPalms(province);
-
-        for (int i = 1; i <= 4; i++) {
-            if (!province.canAiAffordUnit(i, 5)) break;
-            while (canProvinceBuildUnit(province, i)) {
-                if (!tryToAttackWithStrength(province, i)) break;
-            }
+        if (hex.isNeutral()) {
+            c += (currentMode == ProvinceMode.EXPAND) ? 4 : 1;
         }
 
-        // this is to kick start province
-        if (canProvinceBuildUnit(province, 1) && howManyUnitsInProvince(province) <= 1)
-            tryToAttackWithStrength(province, 1);
+        return c;
     }
 
 

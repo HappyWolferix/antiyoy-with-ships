@@ -80,9 +80,18 @@ Per-difficulty deltas:
   leading player is attacked first (`Comparator<Hex>` on `fieldManager.getPlayerHexCount()`),
   reinforces units that face enemies but cannot capture anything
   (`tryToReinforceUnits`/`unitHasToBeReinforced`), deliberately wastes money on peasants when
-  its army idles (`checkToKillRedundantUnits`), doubles attack allure for enemy farms and +5
+  its own army idles (`checkToKillRedundantUnits`), doubles attack allure for enemy farms and +5
   for enemy towns, and only builds towers on the front line. The slay variants
   (`AiExpertSlayRules`, `AiBalancerSlayRules`) mirror this without farms/strong towers.
+- **Balancer province modes** (`BalancerBrain`, `ProvinceMode`) — once per turn each of the
+  balancer's provinces is classified EXPAND (free land nearby), TURTLE (a neighbour is stronger,
+  or the frontier it faces is fortified) or ECONOMY. The mode re-orders spending (EXPAND defers
+  towers) and biases attacks toward neutral land; TURTLE additionally demands an 8-turn income
+  runway instead of 5 before buying a unit. Modes deliberately never switch a category of
+  spending off — earlier versions that did cost about two thirds of the AI's territory. The cache
+  is keyed on `Province` objects, which are rebuilt every turn, so it is cleared in `makeMove()`.
+  Measurements and rejected variants:
+  [implementation-plans/done/adaptive-balancer-ai.md](../ai/implementation-plans/done/adaptive-balancer-ai.md).
 
 ## `AiMaster` (`ai/master/`)
 
@@ -150,6 +159,11 @@ print action/spending thirsts when `DebugFlags.closerLookMode` is set.
 - **Diplomacy**: attackability is checked via `AiMaster.canFractionBeAttacked` (ENEMY relation
   only); the ladder relies on move-zone generation to enforce the same. `DiplomaticAI` (in
   `gameplay/diplomacy/`) handles treaty decisions separately from this package.
+- **Provinces can still seal themselves in** — a unit can only be bought onto a hex with no
+  building on it (`findHexToStageUnit`), so a province whose every hex carries a farm or tower can
+  never field a unit again. `ArtificialIntelligence.buildingWouldSealProvince` keeps every AI from
+  building itself into that corner, but conquest can still shrink a province down onto its own
+  buildings, and nothing recovers from that.
 - Dead code: `AiRestoredBalancerGeneric`/`AiRestoredBalancerSlay` (941/730 lines) are wired to
   nothing.
 

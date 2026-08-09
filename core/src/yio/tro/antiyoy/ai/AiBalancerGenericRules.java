@@ -12,11 +12,21 @@ public class AiBalancerGenericRules extends AiExpertGenericRules implements Comp
     private int[] playerHexCount;
     private ArrayList<Hex> propagationList;
     private ArrayList<Hex> result;
+    protected final BalancerBrain brain;
+
+    /**
+     * Mode of the province currently being handled. Provinces are processed one at a time, so a
+     * single field is enough - it lets getAttackAllure() see the mode without threading it through.
+     */
+    protected ProvinceMode currentMode;
 
 
     public AiBalancerGenericRules(GameController gameController, int fraction) {
         super(gameController, fraction);
+        propagationList = new ArrayList<>();
         result = new ArrayList<Hex>();
+        brain = new BalancerBrain(gameController);
+        currentMode = ProvinceMode.ECONOMY;
     }
 
 
@@ -27,6 +37,8 @@ public class AiBalancerGenericRules extends AiExpertGenericRules implements Comp
 
     @Override
     public void makeMove() {
+        brain.onMoveStarted();
+
         moveUnits();
 
         spendMoneyAndMergeUnits();
@@ -38,6 +50,9 @@ public class AiBalancerGenericRules extends AiExpertGenericRules implements Comp
 
     private void checkToKillRedundantUnits() {
         for (Province province : gameController.fieldManager.provinces) {
+            // upstream ran this over every province on the board, including other players' - which
+            // spent their money and downgraded their units. Only touch our own.
+            if (province.getFraction() != fraction) continue;
             checkToKillRedundantUnits(province);
         }
     }
@@ -68,9 +83,37 @@ public class AiBalancerGenericRules extends AiExpertGenericRules implements Comp
     }
 
 
+    /**
+     * Modes re-order priorities and re-aim attacks; they never switch a category of spending off.
+     * <p>
+     * That restraint is not stylistic - it was measured. Earlier versions of this had EXPAND buy
+     * units before farms and had TURTLE hoard money for a big wave, and both cost the balancer about
+     * two thirds of its territory in seeded skirmishes (see AiSkirmishHarness). Income compounds and
+     * idle money does not, so a province that skips farms or stops attacking never recovers.
+     */
+    @Override
+    protected void spendMoney(Province province) {
+        currentMode = brain.getMode(province);
+
+        switch (currentMode) {
+            case EXPAND:
+                // nothing to defend against yet - towers can wait until the land is taken
+                tryToBuildFarms(province);
+                tryToBuildUnits(province);
+                tryToBuildTowers(province);
+                break;
+            default:
+                tryToBuildTowers(province);
+                tryToBuildFarms(province);
+                tryToBuildUnits(province);
+                break;
+        }
+    }
+
+
     @Override
     protected boolean isOkToBuildNewFarm(Province srcProvince) {
-        if (srcProvince.money > 2 * srcProvince.getCurrentFarmPrice()) return true;
+        if (srcProvince.money > 2 * srcProvince.getCurrentFarmPrice() && !buildingWouldSealProvince(srcProvince)) return true;
 
         int srcArmyStrength = getArmyStrength(srcProvince);
         updateNearbyProvinces(srcProvince);
@@ -108,6 +151,8 @@ public class AiBalancerGenericRules extends AiExpertGenericRules implements Comp
             System.out.println("AiBalancerGenericRules.decideAboutUnit: received unit that is not ready to move");
             return;
         }
+
+        currentMode = brain.getMode(province);
 
         // cleaning palms has highest priority
         if (unit.strength <= 2 && checkToCleanSomePalms(unit, moveZone, province)) return;
@@ -229,6 +274,10 @@ public class AiBalancerGenericRules extends AiExpertGenericRules implements Comp
             c *= 2;
         }
 
+        if (hex.isNeutral()) {
+            c += (currentMode == ProvinceMode.EXPAND) ? 4 : 1;
+        }
+
         return c;
     }
 
@@ -238,8 +287,12 @@ public class AiBalancerGenericRules extends AiExpertGenericRules implements Comp
         tryToBuildUnitsOnPalms(province);
         tryToReinforceUnits(province);
 
+        // A turtle keeps buying - it just insists on a longer runway, so a province under pressure
+        // does not spend itself into a negative balance it cannot defend.
+        int turnsToSurvive = (currentMode == ProvinceMode.TURTLE) ? 8 : 5;
+
         for (int i = 1; i <= 4; i++) {
-            if (!province.canAiAffordUnit(i, 5)) break;
+            if (!province.canAiAffordUnit(i, turnsToSurvive)) break;
             while (canProvinceBuildUnit(province, i)) {
                 if (!tryToAttackWithStrength(province, i)) break;
             }
@@ -395,6 +448,10 @@ public class AiBalancerGenericRules extends AiExpertGenericRules implements Comp
         updateNearbyProvinces(hex);
         if (nearbyProvinces.size() == 0) return false; // build towers only at front line
 
+        // The plan for this AI called for a further "only build where a neighbour could actually
+        // take this hex" gate here. It was built and measured and came out behind (27.5% of the
+        // board against 30.0% without it, over 40 seeded skirmishes) - a gap near the harness's
+        // noise floor, but it was the more complex option, so it lost on both counts.
         return getPredictedDefenseGainByNewTower(hex) >= 3;
     }
 }
