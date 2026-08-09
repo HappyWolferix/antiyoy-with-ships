@@ -975,6 +975,15 @@ public class GameController {
             target.fraction = unit.getFraction();
         }
 
+        // an enemy harbour is destroyed, never captured - see raidPort
+        if (target.objectInside == Obj.PORT && !target.sameFraction(unit.currentHex)) {
+            raidPort(unit, target);
+            if (isPlayerTurn()) {
+                fieldManager.moveZoneManager.hide();
+            }
+            return;
+        }
+
         replayManager.onUnitMoved(unit.currentHex, target);
         if (isMovementPeaceful(unit, target)) {
             moveUnitPeacefully(unit, target);
@@ -990,6 +999,28 @@ public class GameController {
 
     private boolean isMovementPeaceful(Unit unit, Hex target) {
         return unit.currentHex.sameFraction(target);
+    }
+
+
+    /**
+     * A harbour is razed rather than taken. Nothing can occupy the tile afterwards, because the tile
+     * goes back to being open water: a raiding ship stays afloat exactly where the harbour stood,
+     * and an attacker coming from the shore destroys the harbour without moving, since it cannot
+     * stand on water either.
+     */
+    private void raidPort(Unit unit, Hex target) {
+        boolean afloat = unit.ship;
+
+        if (!afloat) {
+            fieldManager.sinkPortHex(target);
+            unit.setReadyToMove(false);
+            return;
+        }
+
+        replayManager.onUnitMoved(unit.currentHex, target);
+        fieldManager.sinkPortHex(target);
+        target.fraction = unit.getFraction(); // water carries the fraction of the ship sitting on it
+        unit.moveToHex(target);
     }
 
 

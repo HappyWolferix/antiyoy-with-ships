@@ -30,6 +30,10 @@ public class AiBalancerSlayRules extends AiExpertSlayRules implements Comparator
     public void makeMove() {
         brain.onMoveStarted();
         super.makeMove();
+
+        // slay rules pay no port income, so the fleet here is purely a way to reach an enemy the
+        // land route cannot; the upkeep gate in NavalStrategist keeps that from getting expensive
+        makeNavalMoves();
     }
 
 

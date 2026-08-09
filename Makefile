@@ -11,9 +11,9 @@
 
 # Gradle needs a JDK (a JRE is not enough). Respect an already-exported
 # JAVA_HOME if it points at a real JDK, otherwise fall back to the one
-# unpacked under ~/.local/opt. The glob keeps this working across patch
+# unpacked under /opt/java. The glob keeps this working across patch
 # version bumps.
-JDK_FALLBACK := $(firstword $(wildcard $(HOME)/.local/opt/jdk-21*))
+JDK_FALLBACK := $(firstword $(wildcard /opt/java/jdk-21*))
 
 ifeq ($(wildcard $(JAVA_HOME)/bin/javac),)
   ifneq ($(strip $(JDK_FALLBACK)),)

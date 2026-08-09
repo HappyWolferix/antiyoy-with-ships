@@ -434,15 +434,42 @@ public class FieldManager implements EncodeableYio{
     private void attachOverseasComponents(ArrayList<ArrayList<Hex>> overseasComponents) {
         for (ArrayList<Hex> component : overseasComponents) {
             Province host = getMaxProvinceWithFraction(component.get(0).fraction);
+            if (host == null) {
+                makeColonyIndependent(component);
+                continue;
+            }
+
             for (Hex hex : component) {
-                if (host == null) {
-                    hex.overseasPart = false;
-                    destroyBuildingsOnHex(hex);
-                } else {
-                    host.addHex(hex);
-                }
+                host.addHex(hex);
             }
         }
+    }
+
+
+    /**
+     * A colony outlives its motherland. When the mainland province it was living off is gone, the
+     * beachhead stops being a colony and stands on its own: an ordinary province with its own
+     * capital, which can build and defend itself like any other. It inherits no money - the treasury
+     * died with the mainland - so it starts from nothing and lives on what its own hexes earn.
+     * <p>
+     * A single hex cannot be a province anywhere in this game, so a lone survivor still collapses.
+     */
+    private void makeColonyIndependent(ArrayList<Hex> component) {
+        for (Hex hex : component) {
+            hex.overseasPart = false;
+        }
+
+        if (component.size() < 2) {
+            destroyBuildingsOnHex(component.get(0));
+            return;
+        }
+
+        Province province = new Province(gameController, component);
+        province.money = 0;
+        if (!province.hasCapital()) {
+            province.placeCapitalInRandomPlace(gameController.getPredictableRandom());
+        }
+        addProvince(province);
     }
 
 
@@ -1074,6 +1101,31 @@ public class FieldManager implements EncodeableYio{
 
 
     /**
+     * Takes a razed port back to open water - the exact inverse of {@link #activatePortHex}. A port
+     * is the one building that stands on the sea, so destroying it must return the tile to the sea.
+     * Letting the attacker capture it instead, the way any other hex is captured, quietly
+     * manufactured a new land tile out in the water every time a harbour changed hands.
+     */
+    public void sinkPortHex(Hex hex) {
+        int previousFraction = hex.fraction;
+        int previousObject = hex.objectInside;
+
+        cleanOutHex(hex); // the port itself, its garrison, and the solid-object entry
+        hex.active = false;
+        hex.overseasPart = false;
+        hex.setFraction(GameRules.NEUTRAL_FRACTION);
+        hex.previousFraction = GameRules.NEUTRAL_FRACTION;
+        activeHexes.remove(hex);
+        addAnimHex(hex);
+
+        // the province just lost a tile, and a harbour can be the only thing joining two stretches
+        // of its coast - so the province may genuinely split in two here
+        splitProvince(hex, previousFraction, previousObject);
+        gameController.updateCacheOnceAfterSomeTime();
+    }
+
+
+    /**
      * A port claims the water tile it stands on: the hex becomes an active part of the province, so
      * income, saving, undo and conquest all treat it as ordinary territory from here on. Must run
      * before addSolidObject, which refuses inactive hexes.
@@ -1401,11 +1453,7 @@ public class FieldManager implements EncodeableYio{
                     mainland.addHex(overseasHex);
                 }
             } else {
-                // the mainland is gone: the colony is cut off and collapses
-                for (Hex overseasHex : component) {
-                    overseasHex.overseasPart = false;
-                    destroyBuildingsOnHex(overseasHex);
-                }
+                makeColonyIndependent(component);
             }
         }
         removeProvince(oldProvince);

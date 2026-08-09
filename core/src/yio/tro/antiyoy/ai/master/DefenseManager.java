@@ -1,5 +1,6 @@
 package yio.tro.antiyoy.ai.master;
 
+import yio.tro.antiyoy.ai.NavalStrategist;
 import yio.tro.antiyoy.gameplay.Hex;
 import yio.tro.antiyoy.gameplay.MassMarchManager;
 import yio.tro.antiyoy.gameplay.Province;
@@ -702,6 +703,7 @@ public class DefenseManager {
             if (!hex.containsUnit()) continue;
             Unit unit = hex.unit;
             if (!unit.isReadyToMove()) continue;
+            if (!NavalStrategist.isLandUnit(unit)) continue; // the fleet is not this manager's to spend
             readyUnits.add(hex.unit);
         }
     }

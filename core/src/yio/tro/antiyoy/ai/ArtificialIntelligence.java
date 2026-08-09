@@ -46,10 +46,28 @@ public abstract class ArtificialIntelligence extends AbstractAi{
     private void searchForUnitsReadyToMoveInProvince(Province province) {
         for (int k = province.hexList.size() - 1; k >= 0; k--) {
             Hex hex = province.hexList.get(k);
-            if (hex.containsUnit() && hex.unit.isReadyToMove()) {
+            // ships are steered by NavalStrategist; the land logic would march them ashore
+            if (hex.containsUnit() && hex.unit.isReadyToMove() && NavalStrategist.isLandUnit(hex.unit)) {
                 unitsReadyToMove.add(hex.unit);
             }
         }
+    }
+
+
+    /**
+     * Ports, launches and sailing. Belongs after the land spending, so ports compete only for money
+     * the front line did not want, and after the land movement, so a ship is never a unit some land
+     * attack was counting on. Province objects are rebuilt whenever territory changes - and building
+     * a port changes territory - so the list is re-read here rather than cached by a caller.
+     */
+    void makeNavalMoves() {
+        for (int i = gameController.fieldManager.provinces.size() - 1; i >= 0; i--) {
+            Province province = gameController.fieldManager.provinces.get(i);
+            if (province.getFraction() != fraction) continue;
+            navalStrategist.performForProvince(province);
+        }
+
+        navalStrategist.moveShips();
     }
 
 

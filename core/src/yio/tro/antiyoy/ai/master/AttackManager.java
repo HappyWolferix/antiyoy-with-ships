@@ -1,5 +1,6 @@
 package yio.tro.antiyoy.ai.master;
 
+import yio.tro.antiyoy.ai.NavalStrategist;
 import yio.tro.antiyoy.gameplay.*;
 import yio.tro.antiyoy.gameplay.diplomacy.DiplomacyManager;
 import yio.tro.antiyoy.gameplay.diplomacy.DiplomaticEntity;
@@ -1116,6 +1117,7 @@ public class AttackManager {
             if (!hex.containsUnit()) continue;
             Unit unit = hex.unit;
             if (!unit.isReadyToMove()) continue;
+            if (!NavalStrategist.isLandUnit(unit)) continue; // the fleet is not this manager's to spend
             readyUnits.add(hex.unit);
         }
     }

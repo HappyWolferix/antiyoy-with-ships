@@ -1,5 +1,6 @@
 package yio.tro.antiyoy.ai.master;
 
+import yio.tro.antiyoy.ai.NavalStrategist;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.utils.Clipboard;
 import yio.tro.antiyoy.PlatformType;
@@ -181,6 +182,9 @@ public class AiMaster extends AbstractAi {
             performForSingleProvince(ownedProvince);
         }
 
+        // ships stand outside every province, so the fleet is handled once, after the provinces
+        navalStrategist.moveShips();
+
         endDebug();
     }
 
@@ -273,6 +277,10 @@ public class AiMaster extends AbstractAi {
         defenseManager.onTurnStarted();
         attackManager.onTurnStarted();
         applyActionsAndSpendings();
+        // after the land spending has had its pick of the money, and before the three trailing land
+        // passes, which re-enumerate units and would otherwise never see a freshly launched ship
+        navalStrategist.performForProvince(currentProvince);
+        syncProvince(); // building a port activates a water hex into the province
         checkForCasualGrab();
         pullUnitsCloserToPerimeter();
         checkToSupplyArmyWithTowers();
@@ -493,6 +501,7 @@ public class AiMaster extends AbstractAi {
             if (!hex.containsUnit()) continue;
             Unit unit = hex.unit;
             if (!unit.isReadyToMove()) continue;
+            if (!NavalStrategist.isLandUnit(unit)) continue; // a docked ship is not a garrison
             readyUnits.add(hex.unit);
         }
     }
@@ -504,6 +513,7 @@ public class AiMaster extends AbstractAi {
             if (!hex.containsUnit()) continue;
             Unit unit = hex.unit;
             if (!unit.isReadyToMove()) continue;
+            if (!NavalStrategist.isLandUnit(unit)) continue; // marching a ship inland scraps it
             Hex targetHex = getClosestHexInPerimeter(unit);
             if (targetHex == null) {
                 targetHex = getClosestHexNearNeutralLands(unit);
@@ -601,6 +611,7 @@ public class AiMaster extends AbstractAi {
             if (!hex.containsUnit()) continue;
             Unit unit = hex.unit;
             if (!unit.isReadyToMove()) continue;
+            if (!NavalStrategist.isLandUnit(unit)) continue; // never merge the fleet away
             if (unit.strength != 1) continue;
             updateMoveZone(unit, GameRules.UNIT_MOVE_LIMIT, false);
             Unit anotherUnit = getReadyToMovePeasant(moveZone, unit);
@@ -1428,7 +1439,16 @@ public class AiMaster extends AbstractAi {
             return randomEmptyHexInFirstLine;
         }
 
-        return getRandomEmptyHex(currentProvince.hexList);
+        Hex randomEmptyHex = getRandomEmptyHex(currentProvince.hexList);
+        if (randomEmptyHex != null) {
+            return randomEmptyHex;
+        }
+
+        Hex capital = currentProvince.getCapital();
+        if (capital != null && capital.canHostBuiltUnit() && !capital.containsUnit()) {
+            return capital;
+        }
+        return null;
     }
 
 
@@ -1598,6 +1618,16 @@ public class AiMaster extends AbstractAi {
             if (!adjHex.active) continue;
             if (!currentProvince.hexList.contains(adjHex)) continue;
             if (!adjHex.nothingBlocksWayForUnit()) continue;
+            return adjHex;
+        }
+
+        // fully built-up province (e.g. just capital + farm): stage on the capital or a port
+        for (int dir = 0; dir < 6; dir++) {
+            Hex adjHex = target.getAdjacentHex(dir);
+            if (!adjHex.active) continue;
+            if (!currentProvince.hexList.contains(adjHex)) continue;
+            if (adjHex.containsUnit()) continue;
+            if (!adjHex.canHostBuiltUnit()) continue;
             return adjHex;
         }
 
@@ -1851,6 +1881,7 @@ public class AiMaster extends AbstractAi {
 
     void pushUnitToBetterDefense(Unit unit) {
         if (!unit.isReadyToMove()) return;
+        if (!NavalStrategist.isLandUnit(unit)) return;
 
         for (int dir = 0; dir < 6; dir++) {
             Hex adjacentHex = unit.currentHex.getAdjacentHex(dir);

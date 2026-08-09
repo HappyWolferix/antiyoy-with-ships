@@ -7,11 +7,13 @@ public abstract class AbstractAi {
 
     public GameController gameController;
     protected int fraction;
+    protected final NavalStrategist navalStrategist;
 
 
     public AbstractAi(GameController gameController, int fraction) {
         this.gameController = gameController;
         this.fraction = fraction;
+        this.navalStrategist = new NavalStrategist(gameController, fraction);
     }
 
 

@@ -43,6 +43,8 @@ public class AiBalancerGenericRules extends AiExpertGenericRules implements Comp
 
         spendMoneyAndMergeUnits();
 
+        makeNavalMoves();
+
         checkToKillRedundantUnits();
         moveAfkUnits();
     }

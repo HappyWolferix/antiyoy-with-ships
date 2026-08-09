@@ -136,6 +136,15 @@ public class Hex implements ReusableYio, EncodeableYio{
     }
 
 
+    /**
+     * Sea a ship can actually enter: water inside the level bounds, as opposed to the void beyond
+     * them, which looks identical but holds nothing and leads nowhere.
+     */
+    public boolean isOpenWater() {
+        return !active && canContainObjects;
+    }
+
+
     public boolean containsTree() {
         return objectInside == Obj.PALM || objectInside == Obj.PINE;
     }

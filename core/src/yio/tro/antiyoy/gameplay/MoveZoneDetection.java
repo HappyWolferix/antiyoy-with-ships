@@ -61,12 +61,13 @@ public class MoveZoneDetection {
         if (hex == null || hex.isNullHex()) return false;
         if (hex.active) return false;
         if (!hex.canContainObjects) return false;
+        if (hex.containsUnit()) return false; // a ship is moored there; no room for a harbour
 
         for (int dir = 0; dir < 6; dir++) {
             Hex adjHex = hex.getAdjacentHex(dir);
             if (!adjHex.active) continue;
-            if (adjHex.overseasPart) continue; // colonies can't anchor new ports
-            if (adjHex.objectInside != Obj.TOWN && adjHex.objectInside != Obj.FARM) continue;
+            // a colony anchors a port on any of its coastal hexes; the motherland only on its economy
+            if (!adjHex.overseasPart && adjHex.objectInside != Obj.TOWN && adjHex.objectInside != Obj.FARM) continue;
             if (!province.containsHex(adjHex)) continue;
             return true;
         }
@@ -80,8 +81,7 @@ public class MoveZoneDetection {
         unFlagAllHexesInArrayList(fieldManager.activeHexes);
         result.clear();
         for (Hex hex : fieldManager.selectedProvince.hexList) {
-            if (hex.overseasPart) continue; // colonies can't anchor new ports
-            if (hex.objectInside != Obj.TOWN && hex.objectInside != Obj.FARM) continue;
+            if (!hex.overseasPart && hex.objectInside != Obj.TOWN && hex.objectInside != Obj.FARM) continue;
             for (int dir = 0; dir < 6; dir++) {
                 adjHex = hex.getAdjacentHex(dir);
                 if (adjHex.active || adjHex.isNullHex() || !adjHex.canContainObjects) continue;
