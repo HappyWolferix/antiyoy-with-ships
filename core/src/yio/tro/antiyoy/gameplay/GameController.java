@@ -798,9 +798,10 @@ public class GameController {
     public boolean mergeUnits(Hex hex, Unit unit1, Unit unit2) {
         if (!ruleset.canMergeUnits(unit1, unit2)) return false;
 
-        fieldManager.cleanOutHex(unit1.currentHex);
-        fieldManager.cleanOutHex(unit2.currentHex);
-        Unit mergedUnit = fieldManager.addUnit(hex, mergedUnitStrength(unit1, unit2));
+        // a merge happening on top of a capital or a port must not level it
+        fieldManager.removeUnitPreservingHostBuilding(unit1.currentHex);
+        fieldManager.removeUnitPreservingHostBuilding(unit2.currentHex);
+        Unit mergedUnit = fieldManager.placeUnitPreservingHostBuilding(hex, mergedUnitStrength(unit1, unit2));
         matchStatistics.onUnitsMerged();
         mergedUnit.setReadyToMove(true);
         if (!unit1.isReadyToMove() || !unit2.isReadyToMove()) {

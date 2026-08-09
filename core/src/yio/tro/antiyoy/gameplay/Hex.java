@@ -169,6 +169,17 @@ public class Hex implements ReusableYio, EncodeableYio{
     }
 
 
+    /**
+     * Bought units may be placed on the province's own capital and on its ports, unlike towers
+     * and farms. Without this a province whose land is entirely built up has nowhere left to
+     * spawn defenders and is stuck.
+     */
+    public boolean canHostBuiltUnit() {
+        if (!containsBuilding()) return true;
+        return objectInside == Obj.TOWN || objectInside == Obj.PORT;
+    }
+
+
     public Hex getSnapshotCopy() {
         Hex record = new Hex(index1, index2, fieldPos, fieldManager, true);
         record.active = active;

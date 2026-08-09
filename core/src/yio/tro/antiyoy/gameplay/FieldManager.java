@@ -939,6 +939,8 @@ public class FieldManager implements EncodeableYio{
         // units can only spawn on own territory
         if (!province.hexList.contains(hex)) return false;
 
+        if (!hex.canHostBuiltUnit()) return false;
+
         if (!province.canBuildUnit(strength)) {
             tickleMoneySign();
             return false;
@@ -959,7 +961,7 @@ public class FieldManager implements EncodeableYio{
 
     private void buildUnitPeacefully(Hex hex, int strength) {
         if (!hex.containsUnit()) {
-            addUnit(hex, strength);
+            placeUnitPreservingHostBuilding(hex, strength);
             return;
         }
 
@@ -1116,6 +1118,36 @@ public class FieldManager implements EncodeableYio{
         if (hex == null) return null;
         hex.addUnit(strength);
         return hex.unit;
+    }
+
+
+    /**
+     * Places a unit on a hex a bought unit is allowed to occupy. Ordinary land crushes whatever
+     * stands there, while the capital and ports keep their building. A unit that ends up on a
+     * port is docked there, exactly as if it had walked in.
+     */
+    public Unit placeUnitPreservingHostBuilding(Hex hex, int strength) {
+        if (!hex.containsBuilding()) return addUnit(hex, strength);
+
+        Unit unit = addUnitWithoutCrushingObject(hex, strength);
+        if (hex.objectInside == Obj.PORT) {
+            unit.ship = true;
+            unit.originHex = hex;
+        }
+        checkToPrepareNewlyAddedUnitForMovement(unit);
+        return unit;
+    }
+
+
+    /**
+     * Takes a unit off a hex without harming a building it was standing on.
+     */
+    public void removeUnitPreservingHostBuilding(Hex hex) {
+        if (hex.containsBuilding()) {
+            removeUnitFromHex(hex);
+            return;
+        }
+        cleanOutHex(hex);
     }
 
 

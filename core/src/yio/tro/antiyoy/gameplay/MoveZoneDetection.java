@@ -191,7 +191,7 @@ public class MoveZoneDetection {
 
 
     private boolean canBuildUnitOnHex(Hex hex, int strength) {
-        if (hex.containsBuilding()) return false;
+        if (!hex.canHostBuiltUnit()) return false;
         if (hex.containsUnit() && !fieldManager.gameController.canMergeUnits(strength, hex.unit.strength)) return false;
         return true;
     }

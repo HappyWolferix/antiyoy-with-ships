@@ -696,7 +696,19 @@ public class SelectionManager {
             return focusedHex.selected && (!focusedHex.containsBuilding() || focusedHex.objectInside == Obj.TOWER);
         }
 
+        if (isUnitTipType(tipType)) {
+            return focusedHex.selected && focusedHex.canHostBuiltUnit();
+        }
+
         return focusedHex.selected && !focusedHex.containsBuilding();
+    }
+
+
+    private boolean isUnitTipType(int tipType) {
+        return tipType == SelectionTipType.UNIT_1
+                || tipType == SelectionTipType.UNIT_2
+                || tipType == SelectionTipType.UNIT_3
+                || tipType == SelectionTipType.UNIT_4;
     }
 
 
