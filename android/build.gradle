@@ -1,0 +1,89 @@
+// Android module. Hand-written rather than generated (see ANDROID_APK_PLAN.md):
+// gdx-setup is defunct and the current generator would pin libGDX/AGP versions
+// that this fork cannot use.
+
+apply plugin: 'com.android.application'
+
+// Only the ABIs that Android 11+ devices actually run. The old x86 ABI is
+// dropped: nothing at API 30+ uses it and it only inflates the APK.
+ext.nativeAbis = ['arm64-v8a', 'armeabi-v7a', 'x86_64']
+
+android {
+    namespace 'yio.tro.antiyoy'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'yio.tro.antiyoy'
+        minSdk 30      // Android 11, the stated floor
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // Upstream layout: sources/manifest/res sit directly in the module root
+    // instead of src/main/..., and the assets are the same folder the desktop
+    // module runs against.
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['src']
+            res.srcDirs = ['res']
+            assets.srcDirs = ['../assets']
+            jniLibs.srcDirs = ['libs']
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    packagingOptions {
+        resources {
+            // The shared assets folder carries notes for the other modules.
+            excludes += ['AGENTS.md', 'META-INF/**']
+        }
+    }
+}
+
+configurations { natives }
+
+dependencies {
+    implementation project(':core')
+    implementation "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
+
+    project.nativeAbis.each { abi ->
+        natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-$abi"
+        // Fonts.java uses gdx-freetype, so its natives are needed too.
+        natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-$abi"
+    }
+}
+
+// The natives ship as jars containing lib*/*.so; AGP wants them laid out as
+// libs/<abi>/*.so. Standard libGDX unpacking task.
+task copyAndroidNatives {
+    doFirst {
+        project.nativeAbis.each { abi ->
+            file("libs/$abi").mkdirs()
+
+            // Match on the full "natives-<abi>" classifier: splitting the jar
+            // name on '-' would turn armeabi-v7a into a bogus "v7a" folder,
+            // which AGP then rejects as an unknown ABI.
+            configurations.natives.files.findAll { it.name.contains("natives-${abi}.jar") }.each { jar ->
+                copy {
+                    from zipTree(jar)
+                    into file("libs/$abi")
+                    include '*.so'
+                }
+            }
+        }
+    }
+}
+
+tasks.matching { it.name.contains('merge') && it.name.contains('JniLibFolders') }.configureEach {
+    it.dependsOn copyAndroidNatives
+}
+
+clean {
+    delete 'libs'
+}

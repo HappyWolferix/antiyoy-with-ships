@@ -6,8 +6,16 @@
 
 buildscript {
     repositories {
+        google()
         mavenCentral()
         gradlePluginPortal()
+    }
+
+    dependencies {
+        // Pinned to 8.5.2: AGP 8.5.x requires exactly Gradle 8.7 (the wrapper
+        // version here) as its minimum, while AGP 8.6+ would need Gradle 8.9.
+        // Bumping one without the other breaks the build.
+        classpath 'com.android.tools.build:gradle:8.5.2'
     }
 }
 
@@ -25,6 +33,7 @@ allprojects {
     }
 
     repositories {
+        google()
         mavenCentral()
         maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
     }

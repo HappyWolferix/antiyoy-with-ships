@@ -1,4 +1,14 @@
+// google() must come first: AGP and its tooling artifacts live only there.
+pluginManagement {
+    repositories {
+        google()
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
 rootProject.name = 'antiyoy'
 
 include 'core'
 include 'desktop'
+include 'android'

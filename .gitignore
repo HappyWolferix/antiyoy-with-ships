@@ -2,5 +2,8 @@
 build/
 core/build/
 desktop/build/
+android/build/
+android/libs/
 *.iml
 .idea/
+local.properties
