@@ -61,6 +61,7 @@ public class AiSkirmishHarness extends YioGdxGame {
     static int maxTurns = 300;
     static boolean slayRules = false;
     static boolean islands = false;
+    static boolean archipelago = false;
     static int subject = Difficulty.BALANCER;
     static int opponent = Difficulty.EXPERT;
 
@@ -86,6 +87,7 @@ public class AiSkirmishHarness extends YioGdxGame {
         if (args.length > 4) opponent = parseDifficulty(args[4]);
         if (args.length > 5) islands = Boolean.parseBoolean(args[5]);
         if (args.length > 6) NavalStrategist.enabled = Boolean.parseBoolean(args[6]);
+        if (args.length > 7) archipelago = Boolean.parseBoolean(args[7]);
 
         YioGdxGame.platformType = PlatformType.pc;
 
@@ -152,7 +154,7 @@ public class AiSkirmishHarness extends YioGdxGame {
         System.out.println("== AiSkirmishHarness: " + runs + " runs, up to " + maxTurns + " rounds each"
                 + ", slayRules=" + slayRules
                 + ", fraction 0 = " + nameOf(subject) + " vs " + nameOf(opponent)
-                + (islands ? " on two islands" : "")
+                + (islands ? (archipelago ? " on an archipelago" : " on two islands") : "")
                 + ", naval=" + NavalStrategist.enabled);
 
         for (int seed = 0; seed < runs; seed++) {
@@ -186,7 +188,7 @@ public class AiSkirmishHarness extends YioGdxGame {
         gameController.random = new Random(seed);
         LoadingManager.getInstance().startGame(instance);
 
-        if (islands && !carveIntoTwoIslands()) {
+        if (islands && !(archipelago ? carveIntoArchipelago() : carveIntoTwoIslands())) {
             System.out.println("run seed=" + seed + " SKIPPED (map would not split cleanly)");
             return -1;
         }
@@ -332,6 +334,65 @@ public class AiSkirmishHarness extends YioGdxGame {
                 } else {
                     sinkHex(fieldManager, hex);
                 }
+            }
+        }
+
+        fieldManager.detectProvinces();
+        return fieldManager.provinces.size() >= 2;
+    }
+
+
+    /**
+     * The many-islands case. Cuts a cross of open water through the continent, which leaves four or
+     * more landmasses: the two biggest become the players' home islands and everything else stays
+     * neutral land to be colonised. That neutral middle is what the two-island map lacks - it is
+     * where a cleared, portless colony full of idle units accumulates, and the only place the cost
+     * of leaving those units stranded can actually be measured.
+     */
+    private boolean carveIntoArchipelago() {
+        FieldManager fieldManager = gameController.fieldManager;
+
+        float minX = Float.MAX_VALUE, maxX = -Float.MAX_VALUE;
+        float minY = Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
+        for (Hex hex : fieldManager.activeHexes) {
+            minX = Math.min(minX, hex.getPos().x);
+            maxX = Math.max(maxX, hex.getPos().x);
+            minY = Math.min(minY, hex.getPos().y);
+            maxY = Math.max(maxY, hex.getPos().y);
+        }
+        if (maxX <= minX || maxY <= minY) return false;
+
+        float middleX = 0.5f * (minX + maxX);
+        float halfChannelX = 0.07f * (maxX - minX);
+        float middleY = 0.5f * (minY + maxY);
+        float halfChannelY = 0.07f * (maxY - minY);
+
+        for (Hex hex : new ArrayList<>(fieldManager.activeHexes)) {
+            boolean inChannel = Math.abs(hex.getPos().x - middleX) <= halfChannelX
+                    || Math.abs(hex.getPos().y - middleY) <= halfChannelY;
+            if (!inChannel) continue;
+            sinkHex(fieldManager, hex);
+        }
+
+        ArrayList<ArrayList<Hex>> islandList = findLandmasses(fieldManager);
+        if (islandList.size() < 3) return false; // not an archipelago, fall out and skip the seed
+
+        islandList.sort((a, b) -> b.size() - a.size());
+        if (islandList.get(1).size() < 10) return false;
+
+        for (int i = 0; i < islandList.size(); i++) {
+            for (Hex hex : islandList.get(i)) {
+                if (i < 2) {
+                    hex.setFraction(i);
+                    hex.previousFraction = i;
+                    continue;
+                }
+                if (islandList.get(i).size() < 3) {
+                    sinkHex(fieldManager, hex); // specks nobody can hold
+                    continue;
+                }
+                hex.setFraction(GameRules.NEUTRAL_FRACTION);
+                hex.previousFraction = GameRules.NEUTRAL_FRACTION;
             }
         }
 

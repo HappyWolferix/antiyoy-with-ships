@@ -216,6 +216,7 @@ public class AttackManager {
         }
 
         aiMaster.buildUnit(hex, strength);
+        if (hex.unit == null) return false; // the purchase was refused - nothing was covered
         hex.unit.setReadyToMove(false);
         return true;
     }

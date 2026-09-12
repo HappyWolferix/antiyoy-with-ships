@@ -12,6 +12,7 @@ import yio.tro.antiyoy.gameplay.rules.GameRules;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.PriorityQueue;
 
 /**
  * The naval half of an AI turn: build ports, launch ships from them, and sail those ships to land
@@ -43,6 +44,13 @@ public class NavalStrategist {
      * port price doubles with each port built, which caps the harbour count on its own.
      */
     private static final int PROFIT_RESERVE = GameRules.TAX_SHIP;
+
+    /**
+     * How many hexes of open water one point of landing value is worth sailing. Higher means the
+     * fleet ignores nearer, poorer coasts in favour of the enemy's capitals and farms; at zero the
+     * fleet would simply take whatever is closest, which is what it used to do.
+     */
+    private static final int VALUE_SCALE = 6;
 
     private final GameController gameController;
     private final FieldManager fieldManager;
@@ -83,12 +91,24 @@ public class NavalStrategist {
         // spent on the front line, and measurement was blunt about it: letting provinces that still
         // had a land frontier put to sea cost the balancer a quarter of its territory share on
         // ordinary maps. If the enemy can be reached on foot, walk.
-        if (targets > 0 && !hasLandFrontier(province)) {
+        boolean strandedAshore = !hasLandFrontier(province);
+
+        if (targets > 0 && strandedAshore) {
             checkToBuildPorts(province);
             checkToAnchorCoast(province);
         }
 
-        checkToLaunchShips(province);
+        // A garrison with nowhere to walk boards before anything is bought. These are units the
+        // province is already paying for and getting nothing back from - on an archipelago a cleared
+        // island can end up holding several of them, and their upkeep is what pushed the province
+        // below the profit reserve that would have paid for the harbour in the first place. Moving
+        // them into the berths costs nothing and turns the whole standing army into an invasion.
+        // ports already standing keep launching even once the land frontier is back, but never into
+        // an empty sea: a hull with nowhere to sail is now scrapped on arrival home, so buying one
+        // in that situation is just a slow way of buying a peasant at twice the price
+        if (targets > 0) {
+            checkToLaunchShips(province);
+        }
     }
 
 
@@ -143,15 +163,30 @@ public class NavalStrategist {
     public void moveShips() {
         if (!enabled) return;
 
-        // one field for the whole fleet: sea distance to the nearest foreign coast, by water
-        HashMap<Hex, Integer> seaDistance = buildSeaDistanceField();
+        // Worth of the best landing reachable from each stretch of water, less the sailing. What
+        // counts as worthwhile depends on how hard the marine aboard hits, so the field is per
+        // strength and built on demand - a fleet of identical hulls still only pays for one sweep.
+        HashMap<Integer, HashMap<Hex, Integer>> seaValues = new HashMap<>();
+        HashMap<Hex, Integer> homeDistance = null;
 
         // moving a ship can sink or merge units, so iterate a copy of the list
         for (Unit unit : new ArrayList<>(gameController.getUnitList())) {
             if (!unit.ship) continue;
             if (unit.getFraction() != fraction) continue;
             if (!unit.isReadyToMove()) continue;
-            moveSingleShip(unit, seaDistance);
+
+            HashMap<Hex, Integer> seaValue = seaValues.get(unit.strength);
+            if (seaValue == null) {
+                seaValue = buildSeaValueField(unit.strength);
+                seaValues.put(unit.strength, seaValue);
+            }
+
+            if (moveSingleShip(unit, seaValue)) continue;
+
+            // nothing this hull can take, anywhere it can sail: bring it home rather than pay its
+            // upkeep forever on the spot. Touching our own coast turns it back into a peasant.
+            if (homeDistance == null) homeDistance = buildHomeDistanceField();
+            sailHome(unit, homeDistance);
         }
     }
 
@@ -170,7 +205,10 @@ public class NavalStrategist {
             if (province.money < province.getCurrentPortPrice() + GameRules.PRICE_UNIT) return;
 
             // the fleet is paid for every turn; getProfit() already counts the ships we own, so this
-            // tightens by itself as the fleet grows
+            // tightens by itself as the fleet grows. A garrison stranded on a cleared island is the
+            // one case where the reserve argues backwards: those units are the reason the profit is
+            // gone, and the harbour is what turns them back into an army instead of a pension. The
+            // first harbour of such a province is bought on cash alone.
             if (province.getProfit() < PROFIT_RESERVE) return;
 
             Hex site = findBestPortSite(province);
@@ -304,6 +342,98 @@ public class NavalStrategist {
     }
 
 
+    /**
+     * Walks idle garrison units into empty harbours, which is all it takes to turn them into ships -
+     * a unit that steps onto its own port is a ship from that moment. Free, unlike
+     * {@link #checkToLaunchShips}, which buys a fresh marine for every berth.
+     * <p>
+     * The strongest unit boards first: on a cleared island the expensive ones are exactly the dead
+     * weight worth shipping out, and a strong marine is what survives a contested landing. One unit
+     * always stays behind while the province has more than one, because an island emptied of
+     * defenders is an invitation to somebody else's fleet.
+     */
+    private void checkToEmbarkStrandedUnits(Province province) {
+        for (Hex berth : province.hexList) {
+            if (berth.objectInside != Obj.PORT) continue;
+            if (berth.containsUnit()) continue;
+
+            Unit unit = findUnitToEmbark(province, berth);
+            if (unit == null) return;
+
+            gameController.moveUnit(unit, berth, province);
+        }
+    }
+
+
+    private Unit findUnitToEmbark(Province province, Hex berth) {
+        Unit best = null;
+
+        for (Hex hex : province.hexList) {
+            if (!hex.containsUnit()) continue;
+
+            Unit unit = hex.unit;
+            if (!canEmbark(province, unit)) continue;
+            if (best != null && unit.strength <= best.strength) continue;
+            if (!gameController.detectMoveZone(hex, unit.strength, GameRules.UNIT_MOVE_LIMIT).contains(berth)) continue;
+
+            best = unit;
+        }
+
+        return best;
+    }
+
+
+    private boolean canEmbark(Province province, Unit unit) {
+        if (!isLandUnit(unit)) return false;
+        if (!unit.isReadyToMove()) return false;
+
+        return countLandUnits(province) > 1; // the last defender stays home
+    }
+
+
+    /**
+     * Whether buying another harbour would give an idle unit somewhere to board - the condition that
+     * lets a stranded province spend its last coins on a port. Bounded by the berths already free, so
+     * it stops asking for harbours as soon as every unit has one.
+     */
+    private boolean hasUnitToEmbark(Province province) {
+        if (hasLandFrontier(province)) return false;
+
+        int embarkable = 0;
+        for (Hex hex : province.hexList) {
+            if (!hex.containsUnit()) continue;
+            if (!canEmbark(province, hex.unit)) continue;
+            embarkable++;
+        }
+
+        return embarkable > countFreeBerths(province);
+    }
+
+
+    private int countFreeBerths(Province province) {
+        int count = 0;
+        for (Hex hex : province.hexList) {
+            if (hex.objectInside != Obj.PORT) continue;
+            if (hex.containsUnit()) continue;
+            count++;
+        }
+
+        return count;
+    }
+
+
+    private int countLandUnits(Province province) {
+        int count = 0;
+        for (Hex hex : province.hexList) {
+            if (!hex.containsUnit()) continue;
+            if (!isLandUnit(hex.unit)) continue;
+            count++;
+        }
+
+        return count;
+    }
+
+
     private int pickMarineStrength(Province province) {
         for (int strength = 4; strength >= 1; strength--) {
             if (!province.canBuildUnit(strength)) continue;
@@ -317,21 +447,133 @@ public class NavalStrategist {
     }
 
 
-    private void moveSingleShip(Unit unit, HashMap<Hex, Integer> seaDistance) {
+    /**
+     * Returns false when this ship has no business at sea any more - no landing in reach and no
+     * water in reach that brings one closer - which is the caller's cue to bring it home.
+     */
+    private boolean moveSingleShip(Unit unit, HashMap<Hex, Integer> seaValue) {
         // the detector hands back a shared list that the next detection call will overwrite
         ArrayList<Hex> zone = new ArrayList<>(gameController.detectMoveZoneForShip(unit));
-        if (zone.size() == 0) return;
+        if (zone.size() == 0) return false;
 
         Hex landing = findBestLanding(zone);
         if (landing != null) {
             sail(unit, landing);
+            return true;
+        }
+
+        Hex approach = findApproach(unit, zone, seaValue);
+        if (approach != null) {
+            sail(unit, approach);
+            return true;
+        }
+
+        // Still afloat with nothing gained. If some target is reachable at all the ship is simply
+        // sitting at the near end of the field - the beach it sailed for has since been garrisoned
+        // or towered - so shuffle along the coast to a hex just as close but somewhere else, and
+        // look again next turn. Only a ship with no reachable target at all gives up and goes home.
+        if (!seaValue.containsKey(unit.currentHex)) return false;
+
+        Hex reposition = findReposition(unit, zone, seaValue);
+        if (reposition != null) {
+            sail(unit, reposition);
+        }
+
+        return true;
+    }
+
+
+    /**
+     * A sideways step: equally close to a target as the hex the ship floats on, but beside a
+     * different stretch of coast. Costs nothing and is how a fleet stalled against a defended shore
+     * finds the soft spot along it instead of anchoring in front of the tower until the game ends.
+     */
+    private Hex findReposition(Unit unit, ArrayList<Hex> zone, HashMap<Hex, Integer> seaValue) {
+        int currentValue = seaValue.get(unit.currentHex);
+        Hex best = null;
+        int bestCoast = countForeignNeighbours(unit.currentHex);
+
+        for (Hex hex : zone) {
+            if (hex.active) continue;
+            if (hex == unit.currentHex) continue;
+
+            Integer value = seaValue.get(hex);
+            if (value == null || value < currentValue) continue;
+
+            int coast = countForeignNeighbours(hex);
+            if (coast <= bestCoast) continue;
+
+            bestCoast = coast;
+            best = hex;
+        }
+
+        return best;
+    }
+
+
+    private int countForeignNeighbours(Hex hex) {
+        int count = 0;
+        for (int dir = 0; dir < 6; dir++) {
+            Hex adjacent = hex.getAdjacentHex(dir);
+            if (adjacent == null || adjacent.isNullHex()) continue;
+            if (!adjacent.active) continue;
+            if (adjacent.fraction == fraction) continue;
+            count++;
+        }
+
+        return count;
+    }
+
+
+    /**
+     * Scraps the voyage: sail towards our own coast and step ashore, which clears the ship flag and
+     * leaves an ordinary peasant standing where it landed. A hull kept at sea with nothing to invade
+     * is pure upkeep, and upkeep is what bankrupts a province and disbands its whole army.
+     */
+    private void sailHome(Unit unit, HashMap<Hex, Integer> homeDistance) {
+        ArrayList<Hex> zone = new ArrayList<>(gameController.detectMoveZoneForShip(unit));
+        if (zone.size() == 0) return;
+
+        Hex beach = findHomeBeach(zone);
+        if (beach != null) {
+            sail(unit, beach);
             return;
         }
 
-        Hex approach = findApproach(unit, zone, seaDistance);
-        if (approach != null) {
-            sail(unit, approach);
+        Integer current = homeDistance.get(unit.currentHex);
+        int bestDistance = current == null ? Integer.MAX_VALUE : current;
+        Hex best = null;
+
+        for (Hex hex : zone) {
+            if (hex.active) continue;
+
+            Integer distance = homeDistance.get(hex);
+            if (distance == null) continue;
+            if (distance >= bestDistance) continue;
+
+            bestDistance = distance;
+            best = hex;
         }
+
+        if (best != null) {
+            sail(unit, best);
+        }
+    }
+
+
+    /**
+     * Where to come ashore at home. The move zone has already ruled on legality, so this only picks:
+     * anywhere but a port, since stepping into one keeps the hull - and the upkeep - afloat.
+     */
+    private Hex findHomeBeach(ArrayList<Hex> zone) {
+        for (Hex hex : zone) {
+            if (!hex.active) continue;
+            if (hex.fraction != fraction) continue;
+            if (hex.objectInside == Obj.PORT) continue;
+            return hex;
+        }
+
+        return null;
     }
 
 
@@ -423,27 +665,26 @@ public class NavalStrategist {
 
 
     /**
-     * Nothing to land on this turn, so close the distance instead. Distance is sailing distance -
-     * the breadth-first field built once per turn - not the straight line, so a ship facing a
-     * friendly island in its way rounds it instead of stalling against the shore: the field already
-     * flows around every obstacle, and following it downhill is the detour. Returns null when no
-     * water hex in range is an improvement on where the ship already floats - drifting on the spot
-     * costs upkeep and achieves nothing.
+     * Nothing to land on this turn, so close on the best prize instead by following the value field
+     * uphill. The field is built over water, so a ship facing a friendly island in its way rounds it
+     * instead of stalling against the shore - the field already flows around every obstacle, and
+     * following it is the detour. Returns null when no water hex in range improves on where the ship
+     * already floats - drifting on the spot costs upkeep and achieves nothing.
      */
-    private Hex findApproach(Unit unit, ArrayList<Hex> zone, HashMap<Hex, Integer> seaDistance) {
+    private Hex findApproach(Unit unit, ArrayList<Hex> zone, HashMap<Hex, Integer> seaValue) {
         // a docked ship stands on land, which the field does not cover - any reachable water beats it
-        Integer current = seaDistance.get(unit.currentHex);
-        int bestDistance = current == null ? Integer.MAX_VALUE : current;
+        Integer current = seaValue.get(unit.currentHex);
+        int bestValue = current == null ? 0 : current;
         Hex best = null;
 
         for (Hex hex : zone) {
             if (hex.active) continue;
 
-            Integer distance = seaDistance.get(hex);
-            if (distance == null) continue; // water from which no foreign coast can be reached
-            if (distance >= bestDistance) continue;
+            Integer value = seaValue.get(hex);
+            if (value == null) continue; // water from which nothing worth taking can be reached
+            if (value <= bestValue) continue;
 
-            bestDistance = distance;
+            bestValue = value;
             best = hex;
         }
 
@@ -452,16 +693,30 @@ public class NavalStrategist {
 
 
     /**
-     * Sailing distance from every reachable water hex to the nearest foreign coast: a breadth-first
-     * sweep over open water, seeded with the water lapping every foreign shore at once. Unbounded -
-     * a destination on the far side of the map pulls ships just as surely as one next door.
+     * A hex this marine could actually take if it got there. Seeding the field with every foreign
+     * coast regardless was what left ships anchored off shores they could not touch: the crossing
+     * takes turns, and by the time the hull arrives the beach it sailed for is garrisoned or under
+     * a new tower. Asking the game's own attack rule instead means the field re-forms every turn
+     * around what is still takeable, and the fleet re-aims itself for free.
      */
-    private HashMap<Hex, Integer> buildSeaDistanceField() {
+    private boolean isWorthSailingFor(Hex hex, int strength) {
+        if (hex.fraction == fraction) {
+            // our own beachhead, worth reinforcing only while it still has room to grow
+            return hex.overseasPart && !hex.containsUnit() && countFreeNeighbours(hex) > 0;
+        }
+
+        return gameController.canUnitAttackHex(strength, fraction, hex);
+    }
+
+
+    /** Sailing distance to our own coast, for a hull being brought home to be scrapped. */
+    private HashMap<Hex, Integer> buildHomeDistanceField() {
         HashMap<Hex, Integer> distance = new HashMap<>();
         ArrayList<Hex> current = new ArrayList<>();
 
         for (Hex hex : fieldManager.activeHexes) {
-            if (hex.fraction == fraction) continue;
+            if (hex.fraction != fraction) continue;
+            if (hex.objectInside == Obj.PORT) continue;
             for (int dir = 0; dir < 6; dir++) {
                 Hex water = hex.getAdjacentHex(dir);
                 if (water == null || water.isNullHex()) continue;
@@ -472,7 +727,103 @@ public class NavalStrategist {
             }
         }
 
+        spreadOverWater(distance, current);
+
+        return distance;
+    }
+
+
+    /**
+     * Sailing distance from every reachable water hex to the nearest worthwhile landing: a
+     * breadth-first sweep over open water, seeded with the water lapping every such shore at once.
+     * Unbounded - a destination on the far side of the map pulls ships just as surely as one next
+     * door.
+     */
+    /**
+     * Sailing distance alone sends every hull at the nearest foreign coast, which on an archipelago
+     * means the fleet spends the game taking the islet next door while the enemy's capital sits
+     * across the water behind it. So the field carries worth rather than distance: every hex this
+     * marine could take seeds the water beside it with what taking it is worth, and each hex of
+     * sailing costs a point. A ship then follows the field uphill, which makes it sail past a cheap
+     * beach for a rich one exactly when the extra crossing is cheaper than the difference in value -
+     * and {@link #VALUE_SCALE} is how many hexes of open water one point of landing value buys.
+     * <p>
+     * Water from which nothing is worth reaching gets no entry at all, same as before: that absence
+     * is what tells a hull it has no business at sea and should go home to be scrapped.
+     */
+    private HashMap<Hex, Integer> buildSeaValueField(int strength) {
+        HashMap<Hex, Integer> field = new HashMap<>();
+        PriorityQueue<RatedHex> frontier = new PriorityQueue<>();
+
+        for (Hex hex : fieldManager.activeHexes) {
+            if (!isWorthSailingFor(hex, strength)) continue;
+
+            int worth = VALUE_SCALE * landingValue(hex);
+            for (int dir = 0; dir < 6; dir++) {
+                Hex water = hex.getAdjacentHex(dir);
+                if (water == null || water.isNullHex()) continue;
+                if (!water.isOpenWater()) continue;
+                offerSeaValue(field, frontier, water, worth);
+            }
+        }
+
+        // Dijkstra rather than the old breadth-first sweep: with the seeds at different heights, the
+        // richest frontier has to be expanded first or a cheap nearby target overwrites a rich
+        // distant one on water they both reach
+        while (frontier.size() > 0) {
+            RatedHex entry = frontier.poll();
+
+            Integer known = field.get(entry.hex);
+            if (known == null || known > entry.value) continue; // already superseded by a richer route
+
+            for (int dir = 0; dir < 6; dir++) {
+                Hex adjacent = entry.hex.getAdjacentHex(dir);
+                if (adjacent == null || adjacent.isNullHex()) continue;
+                if (!adjacent.isOpenWater()) continue;
+                offerSeaValue(field, frontier, adjacent, entry.value - 1);
+            }
+        }
+
+        return field;
+    }
+
+
+    private void offerSeaValue(HashMap<Hex, Integer> field, PriorityQueue<RatedHex> frontier, Hex water, int worth) {
+        if (worth <= 0) return; // too far out to be worth the fare from here
+
+        Integer known = field.get(water);
+        if (known != null && known >= worth) return;
+
+        field.put(water, worth);
+        frontier.add(new RatedHex(water, worth));
+    }
+
+
+    /** A water hex and what the best landing reachable from it is worth, richest first. */
+    private static class RatedHex implements Comparable<RatedHex> {
+
+        final Hex hex;
+        final int value;
+
+
+        RatedHex(Hex hex, int value) {
+            this.hex = hex;
+            this.value = value;
+        }
+
+
+        @Override
+        public int compareTo(RatedHex other) {
+            return other.value - value;
+        }
+    }
+
+
+    /** Plain breadth-first spread over open water, still what the way home is measured with. */
+    private void spreadOverWater(HashMap<Hex, Integer> distance, ArrayList<Hex> seeds) {
+        ArrayList<Hex> current = seeds;
         int depth = 0;
+
         while (current.size() > 0) {
             depth++;
             ArrayList<Hex> next = new ArrayList<>();
@@ -488,7 +839,5 @@ public class NavalStrategist {
             }
             current = next;
         }
-
-        return distance;
     }
 }

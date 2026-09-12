@@ -967,8 +967,9 @@ public class AiMaster extends AbstractAi {
     private void checkToFightTreesWithMoney() {
         while (currentProvince.money >= GameRules.PRICE_UNIT) {
             if (!currentProvince.containsTrees()) break;
+            if (!canAffordGardener()) break; // buying peasants until broke is what starts the spiral
             Hex hex = getWorstTree();
-            buildUnit(hex, 1);
+            if (!buildUnit(hex, 1)) break;
         }
     }
 
@@ -1727,14 +1728,49 @@ public class AiMaster extends AbstractAi {
 
 
     private void updateUnitSpendingThirst(PossibleSpending spending) {
+        double gardenerThirst = calculateGardenerThirst();
         if (currentProvince.hexList.size() < 5) {
-            spending.thirst = 2;
+            spending.thirst = Math.max(2, gardenerThirst);
             return;
         }
-        if (profit < GameRules.TAX_UNIT_GENERIC_1) return;
+        if (profit < GameRules.TAX_UNIT_GENERIC_1) {
+            // an overgrown province has no profit to speak of, but that's exactly the
+            // situation where a gardener pays for itself
+            spending.thirst = gardenerThirst;
+            return;
+        }
         double startingThirst = 3.5 - currentProvince.countUnits(1);
         double expandingThirst = 0.5 * adjacentNeutralLandsQuantity - currentProvince.countUnits(1);
-        spending.thirst = Math.max(startingThirst, expandingThirst);
+        spending.thirst = Math.max(gardenerThirst, Math.max(startingThirst, expandingThirst));
+    }
+
+
+    /**
+     * Trees pay no income and spread every turn, so a province that lost its units - a fresh
+     * colony, or one that just went bankrupt - can sit there overgrown and earning nothing
+     * forever. Keeping a cheap peasant around as a gardener clears a hex per turn and stops
+     * the spread, which is worth more than its upkeep.
+     */
+    private double calculateGardenerThirst() {
+        int treesQuantity = countTreesInCurrentProvince();
+        if (treesQuantity == 0) return 0;
+        if (!canAffordGardener()) return 0;
+        int desiredGardeners = 1 + treesQuantity / 4;
+        return 1.5 * (desiredGardeners - currentProvince.countUnits(1));
+    }
+
+
+    private boolean canAffordGardener() {
+        // don't repeat the bankruptcy that caused the overgrowth in the first place: the
+        // province must be able to pay the new peasant for a few turns out of what it has
+        int deficit = currentProvince.getTaxes() + GameRules.TAX_UNIT_GENERIC_1 - income;
+        if (deficit <= 0) return money >= GameRules.PRICE_UNIT;
+        return money >= GameRules.PRICE_UNIT + 3 * deficit;
+    }
+
+
+    int countTreesInCurrentProvince() {
+        return currentProvince.countObjects(Obj.PALM) + currentProvince.countObjects(Obj.PINE);
     }
 
 
