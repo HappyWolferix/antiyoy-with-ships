@@ -10,6 +10,7 @@ All commands run from the repo root. `make` handles JDK discovery (falls back to
 | `make sprites` | Recompiles `tools/RebuildAtlas.java`, regenerates atlases + `_low`/`_lowest` pngs from full-size pngs under `assets/field_elements` | tools/asset check |
 | `make clean` | Removes gradle build output | — |
 | `make validate-ai-docs` | Runs `tools/validate_ai_docs.sh`: manifest paths exist, folder overlays registered, doc links resolve | docs check — run after any docs/AGENTS.md change |
+| `./gradlew generateVersionFile` | Rewrites `assets/version.txt` with the short git hash — shown in the menu; runs automatically before every compile | — |
 | `./gradlew :desktop:run` | Direct gradle run (needs `JAVA_HOME` set to a JDK) | same as `make run` |
 | `./gradlew :desktop:run -PmainClass=yio.tro.antiyoy.desktop.VerifyHarness -PharnessDir=<dir>` | Scripted runtime harness: taps/keys from `<dir>/cmd.txt`, acks + screenshots out | scripted runtime check |
 

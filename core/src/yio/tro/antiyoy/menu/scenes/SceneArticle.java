@@ -7,6 +7,7 @@ import yio.tro.antiyoy.menu.Animation;
 import yio.tro.antiyoy.menu.ButtonYio;
 import yio.tro.antiyoy.menu.MenuControllerYio;
 import yio.tro.antiyoy.menu.behaviors.Reaction;
+import yio.tro.antiyoy.stuff.VersionManager;
 
 import java.util.ArrayList;
 
@@ -22,6 +23,15 @@ public class SceneArticle extends AbstractScene{
 
 
     public void create(String key, Reaction backButtonBehavior, int id_offset) {
+        create(key, backButtonBehavior, id_offset, false);
+    }
+
+
+    /**
+     * @param showVersion only the 'about game' article shows the build version,
+     *                    the help articles don't.
+     */
+    public void create(String key, Reaction backButtonBehavior, int id_offset, boolean showVersion) {
         menuControllerYio.beginMenuCreation();
 
         menuControllerYio.getYioGdxGame().beginBackgroundChange(1, true, false);
@@ -35,6 +45,10 @@ public class SceneArticle extends AbstractScene{
         infoPanel.addManyLines(list);
         int lines = 18;
         int addedEmptyLines = lines - list.size();
+        if (showVersion) {
+            infoPanel.addTextLine(VersionManager.getInstance().getVersionString());
+            addedEmptyLines--; // the version line takes one of the empty ones
+        }
         for (int i = 0; i < addedEmptyLines; i++) {
             infoPanel.addTextLine(" ");
         }
@@ -50,7 +64,7 @@ public class SceneArticle extends AbstractScene{
 
     @Override
     public void create() {
-        create("info_array", getDefaultBackReaction(), 10);
+        create("info_array", getDefaultBackReaction(), 10, true);
 
         ButtonYio helpIndexButton = buttonFactory.getButton(generateRectangle(0.5, 0.9, 0.45, 0.07), 38123714, getString("help"));
         helpIndexButton.setReaction(Reaction.rbHelpIndex);

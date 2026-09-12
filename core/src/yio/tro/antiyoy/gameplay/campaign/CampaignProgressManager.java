@@ -13,6 +13,7 @@ public class CampaignProgressManager {
     public static final String PROGRESS_PREFS_GENERIC = "antiyoy.progress";
     public static final String PROGRESS_PREFS_SLAY = "antiyoy.progress.slay"; // maybe will be used later
     public static final int INDEX_OF_LAST_LEVEL = 155;
+    public static final int UNLOCKED_LEVELS[] = {40, 60, 100, 136};
 
     private static CampaignProgressManager instance;
     public int currentLevelIndex;
@@ -61,8 +62,22 @@ public class CampaignProgressManager {
         if (index == CampaignLevelFactory.NORMAL_LEVELS_START) return false;
         if (index == CampaignLevelFactory.HARD_LEVELS_START) return false;
         if (index == CampaignLevelFactory.EXPERT_LEVELS_START) return false;
+        if (isMilestoneLevel(index)) return false;
 
         return !isLevelComplete(index) && !isLevelComplete(index - 1);
+    }
+
+
+    /**
+     * Some levels are unlocked from the start,
+     * so that it's possible to skip the easy beginning of the campaign.
+     */
+    public static boolean isMilestoneLevel(int index) {
+        for (int unlockedLevel : UNLOCKED_LEVELS) {
+            if (index == unlockedLevel) return true;
+        }
+
+        return false;
     }
 
 

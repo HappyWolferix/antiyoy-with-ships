@@ -7,3 +7,4 @@ android/libs/
 *.iml
 .idea/
 local.properties
+assets/version.txt

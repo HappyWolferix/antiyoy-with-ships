@@ -1,0 +1,40 @@
+// Version stamp. The game has no version constant of its own, so the build
+// writes the current git hash into assets/version.txt and the menu reads it
+// back at runtime (see stuff/VersionManager.java). The file is generated on
+// every build and is not committed.
+
+ext.readGitVersion = {
+    try {
+        def hash = ['git', 'rev-parse', '--short', 'HEAD'].execute(null, rootDir).text.trim()
+        if (hash.length() == 0) return 'unknown'
+        def changes = ['git', 'status', '--porcelain'].execute(null, rootDir).text.trim()
+        return changes.length() == 0 ? hash : hash + '-dirty'
+    } catch (Exception exception) {
+        return 'unknown'
+    }
+}
+
+tasks.register('generateVersionFile') {
+    description = 'Writes the current git hash into assets/version.txt'
+    group = 'build'
+    def outputFile = rootProject.file('assets/version.txt')
+    outputs.file outputFile
+    // The hash changes without any input file changing, so never skip this.
+    outputs.upToDateWhen { false }
+    doLast {
+        outputFile.text = rootProject.ext.readGitVersion() + '\n'
+    }
+}
+
+subprojects {
+    afterEvaluate {
+        tasks.withType(JavaCompile).configureEach {
+            dependsOn rootProject.tasks.named('generateVersionFile')
+        }
+        // The android module packs ../assets, and its asset merge doesn't go
+        // through JavaCompile, so it needs the stamp wired up separately.
+        tasks.matching { it.name.startsWith('merge') && it.name.endsWith('Assets') }.configureEach {
+            dependsOn rootProject.tasks.named('generateVersionFile')
+        }
+    }
+}

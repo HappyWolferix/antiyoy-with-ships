@@ -11,6 +11,7 @@ import yio.tro.antiyoy.menu.ButtonYio;
 import yio.tro.antiyoy.menu.MenuControllerYio;
 import yio.tro.antiyoy.menu.behaviors.Reaction;
 import yio.tro.antiyoy.stuff.GraphicsYio;
+import yio.tro.antiyoy.stuff.VersionManager;
 
 public class SceneMainMenu extends AbstractScene{
 
@@ -20,6 +21,7 @@ public class SceneMainMenu extends AbstractScene{
     private ButtonYio settingsButton;
     private ButtonYio exitButton;
     private ButtonYio resumeButton;
+    private ButtonYio versionLabel;
     private Reaction loadLastSaveReaction;
 
 
@@ -40,6 +42,7 @@ public class SceneMainMenu extends AbstractScene{
         createSettingsButton();
         createPlayButton();
         checkToCreateResumeButton();
+        createVersionLabel();
 
         menuControllerYio.endMenuCreation();
     }
@@ -86,6 +89,17 @@ public class SceneMainMenu extends AbstractScene{
         infoButton.setAnimation(Animation.up);
         infoButton.setTouchOffset(0.05f * GraphicsYio.width);
         infoButton.setReaction(Reaction.rbAboutGame);
+    }
+
+
+    private void createVersionLabel() {
+        versionLabel = buttonFactory.getButton(generateRectangle(0.01, 0.005, 0.35, 0.04), 6, null);
+        versionLabel.cleatText();
+        versionLabel.addTextLine(VersionManager.getInstance().getVersionString());
+        menuControllerYio.getButtonRenderer().renderButton(versionLabel);
+        versionLabel.setTouchable(false);
+        versionLabel.setShadow(false);
+        versionLabel.setAnimation(Animation.down);
     }
 
 

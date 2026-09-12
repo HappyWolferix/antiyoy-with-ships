@@ -40,6 +40,17 @@ scene's widgets and order spawning/dying buttons for correct draw order. Navigat
 calling another scene's `create()`. In-game scenes live in `menu/scenes/gameplay/` (many extend
 `AbstractModalScene`); editor scenes in `menu/scenes/editor/`.
 
+## Build version stamp
+
+The main menu (`SceneMainMenu.createVersionLabel()`) shows the build version as a small
+non-touchable label in the bottom-left corner, and the "about game" article repeats it as its
+last text line — `SceneArticle.create(key, back, offset, showVersion)`, which the help articles
+call with `showVersion` false. The string comes from `stuff/VersionManager.java`, which reads
+`assets/version.txt`. That file is generated, not committed: the `generateVersionFile` gradle
+task (`version.gradle`) rewrites it with the short git hash — plus a `-dirty` suffix when the
+working tree has uncommitted changes — before every `JavaCompile`. When the file is missing,
+the version reads `unknown`.
+
 ## Rendering
 
 Two layers, composed in `YioGdxGame.render()` (`core/src/yio/tro/antiyoy/YioGdxGame.java`):

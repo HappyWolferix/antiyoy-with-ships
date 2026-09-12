@@ -96,3 +96,6 @@ subprojects {
         }
     }
 }
+
+// Stamps assets/version.txt with the git hash before every compile.
+apply from: rootProject.file('version.gradle')
