@@ -1,56 +1,157 @@
-# Antiyoy
-Antiyoy is a simple turn-based android strategy. Easy to learn, hard to master.
+# Antiyoy with ships
 
-Latest apk file and pc version can be found here: https://drive.google.com/open?id=1p36opkblTxY_Pc6SUZ_zTh8g4iJsm3jV
+A fork of [yiotro/Antiyoy](https://github.com/yiotro/Antiyoy) — the turn-based
+hex strategy game. Everything upstream (hotseat for up to 10 players, map
+generator, level editor, campaign, diplomacy, fog of war) still works the same
+way; this file only covers what is **different here**.
 
-Features:
-- Hotseat multiplayer up to 10 players
-- Random map generator
-- Smooth animations and good optimization
-- Easy tutorial
+Non-commercial project, same as upstream: download, modify and run it freely,
+commercial use is forbidden.
 
-# What is this
-This repository contains source code of antiyoy. You are free to download, modify and run it. This is non-commercial project, so commercial use is forbidden.
+## Gameplay differences
 
-Here is how you set up this project on your computer:
+**Ships, ports and overseas colonies** — the naval layer the repo is named for.
 
-1. Create blank libgdx project. Make sure that you can compile and run it.
-2. Swap source code of that project with source from this repo.
-3. Do same thing with assets.
+- **Port** (`PRICE_PORT = 20`, income 5): built on a *water* hex next to your
+  province. The price **doubles for every port the province already owns**
+  (20 → 40 → 80), so ports are a few deliberate coastal investments rather
+  than farm-style spam. A port claims the water tile it stands on and units can
+  dock there.
+- **Ships**: a unit that puts to sea becomes a ship, moving `SHIP_MOVE_LIMIT = 4`
+  water hexes per turn regardless of which unit tier is aboard, and landing on
+  any reachable coastal hex. Ships pay `TAX_SHIP = 5` extra upkeep per turn on
+  top of the soldier's own pay. A bankrupt province sinks its ships at sea, and
+  a ship that sinks leaves no grave.
+- **Colonies**: land taken overseas is not a province of its own — it lives off
+  the mainland province that fed the landing. A colony can anchor its own port
+  on any coastal hex, but builds no economy buildings. If its motherland is
+  lost, the colony becomes an independent province; if it gains a land border
+  with friendly mainland, it stops being a colony and merges.
 
-# Making a sample libgdx project
-Now, in more details. Here is how you make sample libgdx project:
-1. Download libgdx project generator: https://libgdx.badlogicgames.com/download.html
-2. Launch it.
-3. Name: Antiyoy
-4. Package: yio.tro.antiyoy
-5. Game class: YioGdxGame
-6. Destination: doesn't matter
-7. Android SDK: path to your android sdk folder. You should have it already installed.
-8. Uncheck 'Html' and 'Box2D'
-9. Check 'Freetype'
-10. Press 'Advanced' and check 'IDEA'.
-11. Press 'Generate'. It should take some small time and finish with 'BUILD SUCCESSFULL' message.
+**No buying units directly onto enemy hexes.** Upstream let you purchase a unit
+straight onto any attackable enemy hex in reach. Here units are bought on your
+own land only. They can still move and attack the same turn, so attack-by-purchase
+works within one move zone of the border — it just can't teleport across it.
+(Rationale and the AI side of it are in `docs/architecture/decisions.md`.)
+Replays recorded under the old rule may desync.
 
-# Compile and run in IDEA
-Now, here is how you open this project in Intellij IDEA, compile and run it:
-1. Launch IDEA.
-2. Press 'File - Open'
-3. Find '.ipr' file in project folder and choose it.
-4. Now in IDEA go to 'DesktopLauncher.java' file. To do it just press 'Shift' couple times and type in 'dekstoplauncher'. IDEA should find it.
-5. Press Ctrl+Shift+F10. This will create run configuration for desktop version and launch it. 
-6. First time it will fail with mistake: something about being unable to load some assets. That's because assets folder is not set up correctly for some reason.
-7. Press 'Alt+Shift+F10'. This will open list on run configurations. Choose 'Desktop' and press 'right'. Then choose 'Edit' and press enter.
-8. Change 'Working directory' to '<Project name>/android/assets'.
-9. Now desktop run configuration should work properly.
+**Units can be built on top of capitals and ports.** The hex keeps its building
+instead of being crushed, and a unit placed on a port is docked there.
 
-# Finally
-At this point you should have a working sample libgdx project (just a window with single image). Now just replace source and assets in this project with source and assets from the repo and check if it works. Final touch: go to DesktopLauncher.java and change window dimension there.
+**AI understands the naval game.** A `NavalStrategist` drives port construction,
+sea transport, amphibious attacks and naval defense for computer players.
 
-To run in on android just do the same thing as with 'DekstopLauncher.java' but with 'AndroidLauncher.java'. Note: you'll also have to change 'screenOrientation' in 'AndroidManifest.xml' file (which you can also find by pressing shift few times and typing 'anman').
+## Repo / tooling differences
 
-If you want to make a mod, check out HD version. It has much better code quality. Link: https://github.com/yiotro/antiyoy_hd
+Upstream ships only `core/src` and `assets`, and the README tells you to paste
+them into a project generated by the (now defunct) `gdx-setup` tool. This fork
+carries the whole build:
 
-If you have some feedback about this game then please email me (yiotro93@gmail.com) about it.
+- **Gradle build that works out of the box** — root `build.gradle`,
+  `settings.gradle`, Gradle 8.7 wrapper, a `desktop/` module with a real
+  `DesktopLauncher`, and a hand-written `android/` module. `core/src` and the
+  upstream assets are unmodified except for the gameplay changes above.
+- **`Makefile`**: `make run`, `make build`, `make apk`, `make clean`,
+  `make sprites` (rebuilds atlas textures and the `_low`/`_lowest` pngs from
+  full-size art).
+- **Test harnesses** under `desktop/src/.../desktop/`: `VerifyHarness`,
+  `AiSkirmishHarness`, `NavalRulesHarness` — scripted headless-ish runs for
+  hands-off verification (there is no unit-test framework).
+- **Architecture docs** in [`docs/architecture/`](docs/architecture/README.md)
+  and AI-assistant routing config in [`docs/ai/`](docs/ai/README.md).
+- **libGDX stays pinned at 1.9.10** — 1.9.11 changed
+  `InputProcessor.scrolled()` and would require patching `YioGdxGame`.
 
+Desktop run instructions and the gotchas behind them: [`RUNNING.md`](RUNNING.md).
 
+## Building the APK locally
+
+Produces a debug APK for **Android 11 (API 30) or newer**, signed with the
+debug keystore — it installs on your own device, no release signing needed.
+
+### 1. Install a JDK 21
+
+Gradle 8.7 cannot run on JDK 22+, and AGP 8.5 does not support newer JDKs
+either, so the build is pinned to 21. A JRE is not enough — you need `javac`.
+
+```sh
+sudo apt install openjdk-21-jdk          # or, without root:
+mkdir -p ~/.local/opt && cd ~/.local/opt
+curl -L -o jdk21.tar.gz \
+  "https://api.adoptium.net/v3/binary/latest/21/ga/linux/x64/jdk/hotspot/normal/eclipse"
+tar xzf jdk21.tar.gz && rm jdk21.tar.gz
+```
+
+`gradle.properties` at the repo root pins `org.gradle.java.home` to the JDK
+path. **Edit that line to point at your JDK 21** if yours lives elsewhere.
+
+### 2. Install the Android SDK (command line only, no Android Studio)
+
+```sh
+mkdir -p ~/Android/Sdk/cmdline-tools && cd ~/Android/Sdk/cmdline-tools
+curl -O https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+unzip commandlinetools-linux-*.zip && mv cmdline-tools latest
+
+export ANDROID_HOME=~/Android/Sdk
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64   # or your JDK 21 path
+~/Android/Sdk/cmdline-tools/latest/bin/sdkmanager \
+    "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+~/Android/Sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+```
+
+On Debian/Ubuntu, ignore `/usr/lib/android-sdk` — the distro package is a stub
+with no `sdkmanager`, `platforms/` or `build-tools/`, and cannot be used.
+
+### 3. Point the build at the SDK
+
+Create `local.properties` at the repo root (it is git-ignored):
+
+```properties
+sdk.dir=/home/YOUR_USER/Android/Sdk
+```
+
+### 4. Build
+
+```sh
+make apk
+```
+
+or, equivalently:
+
+```sh
+./gradlew :android:assembleDebug
+```
+
+Output: `android/build/outputs/apk/debug/android-debug.apk`.
+
+The APK should be **>20 MB** — it embeds the shared `assets/` folder, so a tiny
+APK means the asset sourceSet is broken. `aapt dump badging <apk> | grep
+sdkVersion` should report `minSdkVersion:'30'`. Bundled ABIs are `arm64-v8a`,
+`armeabi-v7a` and `x86_64` (the legacy `x86` ABI is dropped).
+
+### 5. Install on a device
+
+```sh
+adb devices    # must show "device", not "unauthorized" or "no permissions"
+adb install -r android/build/outputs/apk/debug/android-debug.apk
+```
+
+Enable Developer Options → USB debugging on the phone and accept the RSA
+prompt first. For `no permissions`, add a udev rule for your phone's vendor ID
+(from `lsusb`) and run `sudo udevadm control --reload`. Copying the APK to the
+phone and sideloading it works too.
+
+### Release APK
+
+Only needed for distribution beyond your own device:
+
+```sh
+keytool -genkey -v -keystore release.keystore -alias antiyoy -keyalg RSA
+# add a signingConfigs block to android/build.gradle, then:
+./gradlew :android:assembleRelease
+```
+
+## Upstream
+
+Original repo: https://github.com/yiotro/Antiyoy · upstream HD rewrite (better
+code quality, better base for mods): https://github.com/yiotro/antiyoy_hd
